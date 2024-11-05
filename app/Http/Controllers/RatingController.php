@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Team;
 use Illuminate\Http\Request;
 
 class RatingController extends Controller
@@ -9,9 +10,13 @@ class RatingController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        if($request->ajax()){
+            
+        }
+        $teams=Team::select('id','name')->get();
+        return view('rating.index',compact('teams'));
     }
 
     /**

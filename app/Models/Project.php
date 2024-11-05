@@ -31,4 +31,15 @@ class Project extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function subTasks()
+    {
+        return $this->hasMany(SubTask::class, 'project_id');
+    }
+    // status
+    const STATUS = [
+        0 => 'Get to Start',
+        1 => 'In Progress',
+        2 => 'Hold',
+        3 => 'Completed'
+    ];
 }
