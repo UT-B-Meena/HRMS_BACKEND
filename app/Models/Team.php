@@ -31,5 +31,10 @@ class Team extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function subTasks()
+    {
+        return $this->hasMany(SubTask::class, 'team_id');
+    }
+
 }
 
