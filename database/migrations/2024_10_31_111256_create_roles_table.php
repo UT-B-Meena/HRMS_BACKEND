@@ -18,12 +18,6 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Insert static roles
-        DB::table('roles')->insert([
-            ['name' => 'Team Lead'],
-            ['name' => 'Manager'],
-            ['name' => 'Employee'],
-        ]);
     }
 
     /**

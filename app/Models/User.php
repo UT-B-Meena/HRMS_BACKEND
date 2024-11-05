@@ -70,4 +70,19 @@ class User extends Authenticatable
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function subTasks()
+    {
+        return $this->hasMany(SubTask::class, 'user_id');
+    }
+
+    public function subTasktimeline()
+    {
+        return $this->hasMany(SubTaskUserTimeline::class, 'user_id');
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(EmployeeAttendance::class, 'user_id');
+    }
 }

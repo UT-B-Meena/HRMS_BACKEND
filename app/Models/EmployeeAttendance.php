@@ -10,6 +10,8 @@ class EmployeeAttendance extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'employee_attendance';
+
     protected $fillable = ['user_id', 'date','day_type', 'updated_by'];
 
     public function user()
