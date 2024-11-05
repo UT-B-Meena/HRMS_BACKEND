@@ -10,6 +10,8 @@ class SubTaskUserTimeline extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'sub_tasks_user_timeline';
+
     protected $fillable = ['user_id', 'product_id', 'project_id', 'task_id', 'subtask_id', 'start_time', 'end_time'];
 
     public function user()
