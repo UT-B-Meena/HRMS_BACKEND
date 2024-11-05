@@ -49,4 +49,5 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('idle_employees', IdleEmployeesController::class);
     Route::resource('Productivity', ProductivityController::class);
+
 });
