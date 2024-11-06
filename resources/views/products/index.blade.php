@@ -97,8 +97,10 @@
 
         $('#productForm').on('submit', function(e) {
             e.preventDefault();
+            const createUrl = "{{ route('products.store') }}"; // Store route for creating products
+            const updateUrl = "{{ route('products.update', ':id') }}";
             let id = $('#productId').val();
-            let url = id ? '/products/' + id : '/products';
+            let url = id ? updateUrl.replace(':id', id) : createUrl; // Replace placeholder with the actual ID
             let method = id ? 'PUT' : 'POST';
 
             $.ajax({

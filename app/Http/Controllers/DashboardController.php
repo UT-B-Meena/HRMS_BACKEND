@@ -22,10 +22,10 @@ class DashboardController extends Controller
         if($role == '1'){
             return view('dashboard.index_PM',compact('products')); //Mangers
         }elseif($role == '2'){
-            return view('dashboard.index_TL'); //Team Lead
+            return view('dashboard.index'); //Team Lead
             
         }else{
-            return view('dashboard.index_EM'); // Employees
+            return view('dashboard.index'); // Employees
 
         }
     }
