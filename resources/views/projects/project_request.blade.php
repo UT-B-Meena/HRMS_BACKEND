@@ -57,6 +57,11 @@
                 <label for="dateFilter">Date</label>
                 <input type="date" id="dateFilter" class="form-control">
             </div>
+
+            <div class="form-group">
+                <label for="globalSearch">Search</label>
+                <input type="text" id="globalSearch" class="form-control" placeholder="Search all fields">
+            </div>
         </div>
 
         <!-- Table Section -->
@@ -89,15 +94,17 @@
     <script type="text/javascript">
         $(document).ready(function() {
             
-            var table =  $('#project-table').DataTable({
+        var table =  $('#project-table').DataTable({
         processing: true,
         serverSide: true,
+        searching: false,
         ajax: {
                 url: "{{ route('project_request') }}",
                 data: function(d) {
                     d.project_id = $('#projectFilter').val();
                     d.user_id = $('#employeeFilter').val();
                     d.date = $('#dateFilter').val();
+                    d.search = $('#globalSearch').val();
                 }
             },
         columns: [
@@ -114,6 +121,10 @@
 
     $('#projectFilter, #employeeFilter, #dateFilter').change(function() {
         table.ajax.reload();
+    });
+
+    $('#globalSearch').on('keyup change', function() {
+        table.ajax.reload(); 
     });
 
     $(document).on('click', '.edit-button', function() {
