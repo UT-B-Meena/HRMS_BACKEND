@@ -10,7 +10,7 @@ class Task extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['product_id', 'project_id', 'name', 'created_by', 'updated_by'];
+    protected $fillable = ['id','product_id', 'project_id', 'name', 'created_by', 'updated_by'];
 
     public function product()
     {

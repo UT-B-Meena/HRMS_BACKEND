@@ -17,34 +17,39 @@
         <a href="#" class="btn btn-secondary">Add Task</a>
         <br>
         <br>
-        <form id="taskForm" method="post" action="{{ route('task.store') }}">
-            @csrf
-            <div class="row">
-                <div class="col-lg-3">
-                    <label>Product</label>
-                    <select name="product_id" id="product" onchange="getDropdownProject(this)">
-                        <option>select product</option>
-                        @foreach ($products as $product)
-                            <option value="{{ $product->id }}">{{ $product->name }}</option>
-                        @endforeach
-                    </select>
+        <div class="card p-4">
+            <form id="taskForm" method="post" action="{{ route('task.store') }}" onsubmit="return validateForm()">
+                @csrf
+                <div class="row">
+                    <div class="col-lg-3">
+                        <label>Product</label>
+                        <select class="form-control" name="product_id" id="product"
+                            onchange="getDropdownProject(this)" required>
+                            <option value="">select product</option>
+                            @foreach ($products as $product)
+                                <option value="{{ $product->id }}">{{ $product->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-3">
+                        <label>Project</label>
+                        <select class="form-control" name="project_id" id="project" disabled required>
+                            <option value="">select Project</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3">
+                        <label>task</label>
+                        <input class="form-control" type="text" name="name" id="name" required>
+                        <span class="text-danger" id="task_error"></span>
+                    </div>
+                    <div class="col-lg-3">
+                        <br>
+                        <input class="btn btn-success" type="submit" value="add" id="submit">
+                    </div>
                 </div>
-                <div class="col-lg-3">
-                    <label>Project</label>
-                    <select name="project_id" id="project" disabled>
-                        <option>select Project</option>
-                    </select>
-                </div>
-                <div class="col-lg-3">
-                    <label>task</label>
-                    <input type="text" name="name" id="name">
-                </div>
-                <div class="col-lg-3">
-                    <input type="submit" value="add" id="submit">
-                </div>
-            </div>
-        </form>
-
+            </form>
+        </div>
+        <br>
         @if (Session::has('success'))
             <div class="alert alert-success">{{ Session::get('success') }}</div>
         @endif
@@ -81,6 +86,17 @@
     <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
     <script>
+        /* function validateForm() {
+            const nameField = document.getElementById('name').value;
+            const namePattern = /^[A-Za-z\s]+$/;
+
+            if (!namePattern.test(nameField)) {
+                $("#task_error").text('Invalid task name');
+                return false;
+            }
+            return true;
+        } */
+
         $(document).ready(function() {
             $('#tasksTable').DataTable({
                 processing: true,
@@ -185,27 +201,26 @@
                     },
                     success: function(response) {
 
-                        $('#project').empty();
-                        $('#project').append('<option value="">Select Project</option>');
+                        $('#project_id').empty();
 
                         if (Array.isArray(response) && response.length > 0) {
+                            $('#project_id').append('<option value="">Select Project</option>');
                             response.forEach(project => {
-                                $('#project').append(
+                                $('#project_id').append(
                                     `<option value="${project.id}">${project.name}</option>`
                                 );
                             });
+                            $('#project_id').prop('disabled', false);
                         } else {
-                            alert('No projects found for this product.');
+                            $('#project_id').append('<option value="">No projects found for this product.</option>');
+                            $('#project_id').prop('disabled', true);
                         }
-                        $('#project').prop('disabled', false);
-                    },
 
+                    },
                     error: function() {
                         alert('Error loading projects. Please try again.');
                     }
                 });
-            } else {
-                $('#project').empty().append('<option value="">Select Project</option>');
             }
         }
     </script>
