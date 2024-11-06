@@ -95,7 +95,47 @@
                         <div class="utilization_body">
                         </div>
                     </div>
-                    <div class="attendance" id="card_list"></div>
+                    <div class="attendance" id="card_list">
+                        <div class="header">
+                            <div>Team Attendance</div>
+                            <div>
+                                <p>Total Employee:{{$result['total_strength']}}</p>
+                                <p>Present Employee:{{$result['total_present_employees']}}</p>
+                                <p>Absent Employee:{{$result['total_absent_employees']}}</p>
+                            </div>
+                        </div>
+                        <div class="attendance_body">
+                            @foreach ($result['team_wise_attendance'] as $team)
+                            <div class="team_based">
+                                <p>
+                                <div class="team_name" data-toggle="collapse" data-target="#collapseExample{{$team['team_id']}}"
+                                    role="button" aria-expanded="false" aria-controls="collapseExample{{$team['team_id']}}">
+                                    {{$team['team_name']}}
+                                </div>
+                                </p>
+                                <div class="collapse" id="collapseExample{{$team['team_id']}}">
+                                    <div class="card card-body">
+                                        <div class="streangth_section">
+                                            <p>Total Strength:{{$team['total_team_count']}} </p>
+                                            <p>Present: {{$team['team_present_count']}}</p>
+                                            <p>Absent: {{$team['team_absent_count']}}</p>
+                                        </div>
+                            
+                                        <div class="employee_details">
+                                            <div class="header">Absent Employees</div>
+                                            @foreach($team['absent_employees'] as $employee)
+                                                <div class="employee_section">
+                                                    <div class="name_section">{{$employee['employee_name']}}</div>
+                                                    <div class="employee_id">SW-{{$employee['employee_id']}}</div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
