@@ -65,6 +65,31 @@ class ProductivityController extends Controller
 
 
 
+    public function IndividualStatus(Request $request)
+    {
+        $query = SubTask::with(['user:id,employee_id,name']);
+
+        if ($request->filled('team_id')) {
+            $query->where('team_id', $request->team_id);
+        }
+
+        $subtasks = $query->get();
+
+        $data = $subtasks->groupBy('user.id')->map(function ($userSubtasks) {
+            $user = $userSubtasks->first()->user;
+
+            return [
+                'employee_name' => $user->name,
+                'employee_id' => $user->employee_id,
+                'assigned_subtasks' => $userSubtasks->count(),
+                'ongoing_subtasks' => $userSubtasks->where('status', '1')->count(),
+                'completed_subtasks' => $userSubtasks->where('status', '3')->count(),
+            ];
+        })->values();
+
+        return response()->json(['status' => 'success', 'data' => $data]);
+    }
+
 
 
 
