@@ -60,16 +60,23 @@ class TaskController extends Controller
         $validatedData['updated_by'] = Auth::id();
         $validatedData['status'] = 0;
 
+        $exists = Task::where(['project_id' => $validatedData['project_id'], 'name' => $validatedData['name']])->exists();
 
-        $task = Task::create($validatedData);
+        if(!$exists){
+            $task = Task::create($validatedData);
 
-        if ($task) {
-            Session::flash('success', 'Task created successfully!');
-            return redirect()->back();
-        } else {
-            Session::flash('error', 'Failed to create task. Please try again.');
-            return redirect()->back();
+            if ($task) {
+                Session::flash('success', 'Task created successfully!');
+                return redirect()->back();
+            } else {
+                Session::flash('error', 'Failed to create task. Please try again.');
+                return redirect()->back();
+            }
+        }else{
+            Session::flash('error', 'Task name already exits.');
+                return redirect()->back();
         }
+
     }
 
 
@@ -83,13 +90,14 @@ class TaskController extends Controller
             return response()->json([
                 'task' => $task,
                 'projects' => $projects,
+
                 'status' => 200
             ], 200);
         } else {
             return response()->json([
                 'error' => 'Task not found',
-                'status' => 200
-            ], 404);
+                'status' => 422
+            ], 422);
         }
     }
 
@@ -135,7 +143,7 @@ class TaskController extends Controller
         $task = Task::findOrFail($id);
 
         $exists = SubTask::where('task_id', $id)->exists();
-        if($exists){
+        if(!$exists){
             if ($task->delete()) {
                 return response()->json(['status' => 200, 'message' => 'Task deleted successfully.'], 200);
             } else {

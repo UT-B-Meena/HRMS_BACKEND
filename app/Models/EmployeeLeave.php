@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class EmployeeAttendance extends Model
+class EmployeeLeave extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'employee_attendance';
+    protected $table = 'employee_leave';
 
     protected $fillable = ['user_id', 'date','day_type', 'updated_by'];
 

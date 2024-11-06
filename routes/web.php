@@ -11,6 +11,8 @@ use App\Http\Controllers\RatingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IdleEmployeesController;
 use App\Http\Controllers\ProductivityController;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\SubTaskUserTimelineController;
 
 
 Route::middleware(['web'])->group(function () {
@@ -28,17 +30,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/Products/{id}', [DashboardController::class, 'viewProduct'])->name('products');
         Route::get('/Product/{id}', [DashboardController::class, 'viewProducts'])->name('product');
         Route::get('/utilizeteamdata', [DashboardController::class, 'fetchTeamData'])->name('utilizeteamdata');
+        Route::get('/attendancedata', [DashboardController::class, 'fetchAttendanceData'])->name('attendancedata');
     });
 
     Route::resource('products', ProductController::class);
-    Route::resource('projects', ProjectController::class);
+
     Route::resource('task', TaskController::class);
     Route::get('tasks-data', [TaskController::class, 'getTasksData'])->name('tasks.data');
     Route::resource('subtask', SubTaskController::class);
-    Route::get('subtasks-data', [SubTaskController::class, 'getsubTasksData'])->name('subtasks.data');
     Route::get('team_emp', [SubTaskController::class, 'team_emp'])->name('team_emp');
 
-
+    Route::resource('projects', ProjectController::class);
     Route::get('/project_request', [ProjectController::class, 'projectRequest'])->name('project_request');
     Route::get('/project_request/subtask/{id}', [ProjectController::class, 'getprojectRequestData'])->name('projectRequest.data');
     Route::put('/project_request/subtask/{id}', [ProjectController::class, 'updateProjectRequest'])->name('project_request.update');
@@ -49,4 +51,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('idle_employees', IdleEmployeesController::class);
     Route::resource('Productivity', ProductivityController::class);
+    Route::get('/productivity_IndividualStatus', [ ProductivityController::class, 'IndividualStatus'])->name('productivity.individualStatus');
+
+    Route::get('/closed_tasks', [SubTaskUserTimelineController::class, 'getClosedTasks'])->name('tasks.closed');
+
+    Route::get('/change_password', [AuthController::class, 'showChangePasswordForm'])->name('password.change');
+    Route::post('/change_password', [AuthController::class, 'changePassword'])->name('password.update');
 });
