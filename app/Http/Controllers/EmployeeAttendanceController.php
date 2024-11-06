@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EmployeeAttendance;
+use App\Models\EmployeeLeave;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,9 +18,8 @@ class EmployeeAttendanceController extends Controller
     {
         if($request->ajax()){
             $teamleader=Auth::id();
-            $attendanceQuery = EmployeeAttendance::where('date', $request->date); 
+            $attendanceQuery = EmployeeLeave::where('date', $request->date); 
             $currentTime = now()->format('H:i'); 
-            $currentTime = "16:30";
             $cutoffTime = '13:30';
             if ($request->status === "Absent") {
                 $absentUserIds = $attendanceQuery->where(function ($query) use ($currentTime, $cutoffTime) {
@@ -112,7 +111,7 @@ class EmployeeAttendanceController extends Controller
         $status= $request->statusFilter;
         $halfDay = $request->halfDay;
             foreach ($ids as $id) {
-                $attendance = EmployeeAttendance::firstOrNew([
+                $attendance = EmployeeLeave::firstOrNew([
                     'user_id' => $id,
                     'date' => $date,
                 ]);
@@ -126,7 +125,7 @@ class EmployeeAttendanceController extends Controller
             }
             if($status=="Present" &&  $attendanceType ==1 ){
                 foreach ($ids as $id) {
-                    $employee = EmployeeAttendance::where('user_id',$id)->where('date',$date);
+                    $employee = EmployeeLeave::where('user_id',$id)->where('date',$date);
                     $employee->delete();
                 }
             }

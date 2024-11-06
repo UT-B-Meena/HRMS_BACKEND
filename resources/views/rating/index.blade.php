@@ -21,8 +21,8 @@
     
     <div class="row mb-3">
       <div class="col-md-6">
-            <select id="teamSelect" class="form-control">
-                <option value="">All Teams</option>
+            <select class="form-control" id="team_id">
+                <option value="all">All Teams</option>
                 @foreach ($teams as $team)
                     <option value="{{ $team->id }}">{{ $team->name }}</option>
                 @endforeach
@@ -34,7 +34,7 @@
         
     </div>
     
-    <table class="table table-bordered" id="productsTable">
+    <table class="table table-bordered" id="ratingTable">
         <thead>
             <tr>
                 <th>S.No</th>
@@ -49,28 +49,32 @@
     </table>
 </div>
 
-<!-- Create/Edit Products Modal -->
-<div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-labelledby="productModalLabel" aria-hidden="true">
+
+<div class="modal fade" id="ratingModel" tabindex="-1" role="dialog" aria-labelledby="ratingModelLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <form id="productForm">
+            <form id="ratingForm">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title" id="productModalLabel">Add Product</h5>
+                    <h5 class="modal-title" id="ratingModelLabel">Add Product</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <input type="hidden" id="productId" name="id">
+                    <input type="hidden" id="user_id" name="user_id">
                     <div class="form-group">
-                        <label for="name">Product Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required>
+                        <label for="name">Employee Name</label>
+                        <input type="text" class="form-control" id="empName" name="empName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Monthly Rating</label>
+                        <input type="number" class="form-control" id="ratingValue" name="ratingValue" required>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save Product</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
         </div>
@@ -92,8 +96,8 @@
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             }
         });
-        var teamId=$("team_id").val();
-        var table = $('#productsTable').DataTable({
+        let teamId=$("#team_id").val();
+        const table = $('#ratingTable').DataTable({
             processing: true,
             serverSide: true,
             ajax: {
@@ -103,35 +107,34 @@
                 }
             },
             columns: [
-                { data: 'id', name: 'id' },
+                { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
+                { data: 'employee_id', name: 'employee_id' },
                 { data: 'name', name: 'name' },
-                { data: 'status', name: 'status' },
-                { data: 'status', name: 'status' },
-                { data: 'status', name: 'status' },
-                { data: 'status', name: 'status' },
-                { data: 'actions', name: 'actions', orderable: false, searchable: false },
-            ]
+                { data: 'team', name: 'team' },
+                { data: 'avg_total_rating', name: 'avg_total_rating' },
+                { data: 'avg_monthly_rating', name: 'avg_monthly_rating' },
+                { data: 'action', name: 'action', orderable: false, searchable: false },
+            ]   
         });
+        $("#team_id").change(function(){
+            teamId=$(this).val();
+            table.ajax.reload();
+        })
 
         $('#createNewProduct').click(function() {
-            $('#productForm')[0].reset();
-            $('#productId').val('');
-            $('#productModalLabel').text('Add Product');
-            $('#productModal').modal('show');
+            $('#ratingForm')[0].reset();
+            $('#user_id').val('');
+            $('#ratingModel').modal('show');
         });
 
-        $('#productForm').on('submit', function(e) {
+        $('#ratingForm').on('submit', function(e) {
             e.preventDefault();
-            let id = $('#productId').val();
-            let url = id ? '/products/' + id : '/products';
-            let method = id ? 'PUT' : 'POST';
-
             $.ajax({
-                url: url,
-                method: method,
+                url: "{{ route('rating.store') }}",
+                method: "POST",
                 data: $(this).serialize(),
                 success: function(response) {
-                    $('#productModal').modal('hide');
+                    $('#ratingModel').modal('hide');
                     table.ajax.reload();
                     alert(response.success);
                 },
@@ -140,33 +143,21 @@
                 }
             });
         });
+        $('#ratingTable').on('click', '.edit-btn', function() {
+            let userId = $(this).data('user-id'); 
+            let empName = $(this).data('emp-name'); 
+            let monthRate = $(this).data('month-rate'); 
+            $('#user_id').val(userId);
+            $('#empName').val(empName);
+            $('#ratingValue').val(monthRate);
+    
+            $('#ratingModelLabel').text('Edit Rating');
+            $('#ratingModel').modal('show');
+          
+    });
 
-        $('#productsTable').on('click', '.edit-btn', function() {
-            let id = $(this).data('id');
-            $.get('/products/' + id + '/edit', function(data) {
-                $('#productModalLabel').text('Edit Product');
-                $('#productId').val(data.id);
-                $('#name').val(data.name);
-                $('#productModal').modal('show');
-            });
-        });
 
-        $('#productsTable').on('click', '.delete-btn', function() {
-            let id = $(this).data('id');
-            if(confirm('Are you sure you want to delete this product?')) {
-                $.ajax({
-                    type: 'DELETE',
-                    url: '/products/' + id,
-                    success: function(response) {
-                        table.ajax.reload();
-                        alert(response.success);
-                    },
-                    error: function(xhr) {
-                        alert('Error: ' + xhr.responseJSON.message);
-                    }
-                });
-            }
-        });
+        
     });
     </script>
 </body>
