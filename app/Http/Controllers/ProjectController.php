@@ -138,6 +138,25 @@ class ProjectController extends Controller
                 $data->whereDate('updated_at', $request->date);
             }
 
+            if ($request->has('search') && $request->search != '') {
+                $searchTerm = $request->search;
+                $data->where(function($query) use ($searchTerm) {
+                    $query->where('name', 'like', "%$searchTerm%")
+                          ->orWhereHas('user', function($q) use ($searchTerm) {
+                              $q->where('name', 'like', "%$searchTerm%");
+                          })
+                          ->orWhereHas('user.team', function($q) use ($searchTerm) {
+                              $q->where('name', 'like', "%$searchTerm%");
+                          })
+                          ->orWhereHas('project', function($q) use ($searchTerm) {
+                              $q->where('name', 'like', "%$searchTerm%");
+                          })
+                          ->orWhereHas('assigned_user', function($q) use ($searchTerm) {
+                              $q->where('name', 'like', "%$searchTerm%");
+                          });
+                });
+            }
+
 
             return DataTables::of($data->get())
                 ->addIndexColumn()
@@ -203,6 +222,7 @@ class ProjectController extends Controller
         $subtask->remark = $request->input('remark');
         if ($request->input('action') === 'reopen') {
             $subtask->status = 0;
+            $subtask->reopen_status = 1;
         } elseif ($request->input('action') === 'close') {
             $subtask->status = 3;
         }
@@ -247,6 +267,25 @@ class ProjectController extends Controller
     
                 if ($request->date) {
                     $query->whereDate('created_at', $request->date);
+                }
+
+                if ($request->has('search') && $request->search != '') {
+                    $searchTerm = $request->search;
+                    $query->where(function($q) use ($searchTerm) {
+                        $q->where('created_at', 'like', "%$searchTerm%") // Search by created_at if necessary
+                          ->orWhereHas('product', function($q) use ($searchTerm) {
+                              $q->where('name', 'like', "%$searchTerm%");
+                          })
+                          ->orWhereHas('project', function($q) use ($searchTerm) {
+                              $q->where('name', 'like', "%$searchTerm%");
+                          })
+                          ->orWhereHas('subtask', function($q) use ($searchTerm) {
+                              $q->where('name', 'like', "%$searchTerm%");
+                          })
+                          ->orWhereHas('user', function($q) use ($searchTerm) {
+                              $q->where('name', 'like', "%$searchTerm%");
+                          });
+                    });
                 }
 
                 return DataTables::of($query)
