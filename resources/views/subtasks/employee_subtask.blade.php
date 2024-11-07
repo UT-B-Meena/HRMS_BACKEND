@@ -67,47 +67,7 @@
         <!-- Tab Content -->
         <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="ongoing" role="tabpanel" aria-labelledby="ongoing-tab">
-                <div class="row mt-3">
-                    <!-- Sample Task Card -->
-                    <div class="col-md-4">
-                        @if (isset($groupedSubtasks['To-Do']) && $groupedSubtasks['To-Do']->isNotEmpty())
-                        @foreach ($groupedSubtasks['To-Do'] as $subtask)
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">To-Do</h5>
-                                <p class="card-text"><strong>Product:</strong>{{ $subtask->product->name ?? 'N/A' }}</p>
-                                <p class="card-text"><strong>Sub-Task:</strong> {{ $subtask->name ?? 'N/A' }}</p>
-                                <p class="card-text"><strong>Priority:</strong> {{ $subtask->priority }}</p>
-                                <button class="btn btn-primary start-task-btn" 
-                                        data-product="{{ $subtask->product->name ?? 'N/A' }}" 
-                                        data-project="{{ $subtask->project->name ?? 'N/A' }}"
-                                        data-subtask="{{ $subtask->name ?? 'N/A' }}"
-                                        data-description="{{ $subtask->description }}"
-                                        data-priority="{{ $subtask->priority }}"
-                                        data-duration="02:30:00">Start</button>
-                            </div>
-                        </div>
-                        @endforeach
-                        @else
-                            <p>No To-Do tasks available.</p>
-                        @endif
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Reopen</h5>
-                                <p class="card-text">Description of Task 1.</p>
-                                <button class="btn btn-primary start-task-btn" 
-                                        data-product="Lootrix" 
-                                        data-project="Lootrix Website"
-                                        data-subtask="UI Correction"
-                                        data-description="Lorem ipsum dolor sit amet."
-                                        data-priority="High"
-                                        data-duration="02:30:00">Start</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                @include('partials.ongoing_section')
             </div>
             
             <!-- Closed Task Tab -->
