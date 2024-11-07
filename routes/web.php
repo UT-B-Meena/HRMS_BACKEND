@@ -32,12 +32,18 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/utilizeteamdata', [DashboardController::class, 'fetchTeamData'])->name('utilizeteamdata');
         Route::get('/attendancedata', [DashboardController::class, 'fetchAttendanceData'])->name('attendancedata');
     });
+    Route::group(['as' => 'em.'], routes: function() {
+        
+        Route::get('/chartemployeetaskData', [DashboardController::class, 'fetchEmployeeTaskData'])->name('chartemployeetaskData');
+        Route::get('/employeeAttendancelist', [DashboardController::class, 'fetchEmployeeListData'])->name('employeeAttendancelist');
+    });
 
     Route::resource('products', ProductController::class);
 
     Route::resource('task', TaskController::class);
     Route::get('tasks-data', [TaskController::class, 'getTasksData'])->name('tasks.data');
     Route::resource('subtask', SubTaskController::class);
+    Route::get('getSubtaskFilter', [SubTaskController::class, 'getSubtaskFilter'])->name('getSubtaskFilter');
     Route::get('team_emp', [SubTaskController::class, 'team_emp'])->name('team_emp');
 
     Route::resource('projects', ProjectController::class);

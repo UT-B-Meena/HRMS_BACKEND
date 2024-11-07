@@ -18,31 +18,43 @@
         div#card_list {
             width: 50%;
         }
+
         .product_section {
-    border: 1px solid grey;
-    margin-bottom: 12px;
-    padding: 5px;
-    border-radius: 5px;
-}
-.time {
-    width: 100px;
-}
-.breakdown_section {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 19px;
-    border: 1px solid grey;
-    padding: 10px;
-    border-radius: 5px;
-}
-.breakdown_header {
-    display: flex;
-    justify-content: space-between;
-}
-.task_name {
-    width: 238px;
-}
+            border: 1px solid grey;
+            margin-bottom: 12px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .time {
+            width: 100px;
+        }
+
+        .breakdown_section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 19px;
+            border: 1px solid grey;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .breakdown_header {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .task_name {
+            width: 238px;
+        }
+
+        .statistics_header,
+        .section1,
+        .tasksection_header {
+            display: flex;
+            justify-content: space-between;
+        }
     </style>
 </head>
 
@@ -66,51 +78,83 @@
                             <p>Pending Task</p>
                         </div>
                         <div class="body">
-                            @if($subTasks->isEmpty())
-                            <div class="no-records" style="text-align: center;color:red">No records found</div>
+                            @if ($subTasks->isEmpty())
+                                <div class="no-records" style="text-align: center;color:red">No records found</div>
                             @else
-                            @foreach ($subTasks as $subtask)
-                                <div class="product_section">
-                                    <p>Project name: <b>{{$subtask['project_name']}}</b></p>
-                                    <p>Subtask Name: <b>{{$subtask['subtask_name']}}</b></p>
-                                    <p>Remaining Hours: <b>{{$subtask['remaining_hours']}}</b></p>
-                                    
-                                </div>
-                            @endforeach
+                                @foreach ($subTasks as $subtask)
+                                    <div class="product_section">
+                                        <p>Project name: <b>{{ $subtask['project_name'] }}</b></p>
+                                        <p>Subtask Name: <b>{{ $subtask['subtask_name'] }}</b></p>
+                                        <p>Remaining Hours: <b>{{ $subtask['remaining_hours'] }}</b></p>
+
+                                    </div>
+                                @endforeach
                             @endif
                         </div>
                     </div>
                     <div class="breakdown" id="card_list">
                         <div class="breakdown_header">
                             <p>Daily breakdown</p>
-                            <p>{{now()->format('d-m-Y')}}</p>
+                            <p>{{ now()->format('d-m-Y') }}</p>
                         </div>
                         <div class="body">
                             <p style="text-align:center"><b>8 hrs</b></p>
-                            @if($dailyBreakdown->isEmpty())
-                            <div class="no-records" style="text-align: center;color:red">No records found</div>
+                            @if ($dailyBreakdown->isEmpty())
+                                <div class="no-records" style="text-align: center;color:red">No records found</div>
                             @else
-                            @foreach ($dailyBreakdown as $breakDown)
-                                <div class="breakdown_section">
-                                    <div class="time">
-                                        <p><b>{{$breakDown['startTime']}}</b></p>
-                                        <p>to</p>
-                                        <p><b>{{$breakDown['endTime']}}</b></p>
+                                @foreach ($dailyBreakdown as $breakDown)
+                                    <div class="breakdown_section">
+                                        <div class="time">
+                                            <p><b>{{ $breakDown['startTime'] }}</b></p>
+                                            <p>to</p>
+                                            <p><b>{{ $breakDown['endTime'] }}</b></p>
+                                        </div>
+                                        <div class="task_name">
+                                            <p>Project name: <b>{{ $breakDown['project_name'] }}</b></p>
+                                            <p>Subtask Name: <b>{{ $breakDown['subtask_name'] }}</b></p>
+                                        </div>
+                                        <div class="duration">
+                                            <p>Duration: <b>{{ $breakDown['duration'] }}</b></p>
+                                        </div>
+
                                     </div>
-                                    <div class="task_name">
-                                        <p>Project name: <b>{{$breakDown['project_name']}}</b></p>  
-                                        <p>Subtask Name: <b>{{$breakDown['subtask_name']}}</b></p>
-                                    </div>
-                                    <div class="duration">
-                                        <p>Duration: <b>{{$breakDown['duration']}}</b></p>
-                                    </div>
-                                    
-                                </div>
-                            @endforeach
+                                @endforeach
                             @endif
                         </div>
                     </div>
-                    <div class="attendance" id="card_list">
+                    <div class="statistics_section" id="card_list">
+                        <div class="statistics">
+                            <div class="statistics_header mb-4">
+                                <p>Task Statistics</p>
+                                <button id="graph">click</button>
+                            </div>
+                            <div class="statistics_body">
+                                <div class="task_section">
+                                    <div class="tasksection_header">
+                                        <p>Total Task</p>
+                                        <p>{{ $statisticsResult['total_task_count'] }}</p>
+                                    </div>
+                                    <div class="tasksection_body">
+                                        <div class="section1">
+                                            <p>Assigned Task</p>
+                                            <p>{{ $statisticsResult['total_task_count'] }}</p>
+                                        </div>
+                                        <div class="section1">
+                                            <p>Ongoing Task</p>
+                                            <p>{{ $statisticsResult['in_progress_task_count'] }}</p>
+                                        </div>
+                                        <div class="section1">
+                                            <p>Completed Task</p>
+                                            <p>{{ $statisticsResult['completed_task_count'] }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rating_section">
+                            <div class="monthrating"></div>
+                            <div class="averagerating"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -122,6 +166,4 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script> <!-- Bootstrap JS -->
 
-<script>
-    
-</script>
+<script></script>

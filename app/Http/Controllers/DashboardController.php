@@ -165,29 +165,143 @@ class DashboardController extends Controller
                 $formattedDuration = sprintf('%02d:%02d:%02d', $duration->h, $duration->i, $duration->s);
 
                 return [
-                    'startTime' => $formattedStartTime, 
-                    'endTime' => $formattedEndTime,     
-                    'project_name' => $subTask->project->name, 
-                    'subtask_name' => $subTask->subtask->name, 
-                    'duration' => $formattedDuration,     
+                    'startTime' => $formattedStartTime,
+                    'endTime' => $formattedEndTime,
+                    'project_name' => $subTask->project->name,
+                    'subtask_name' => $subTask->subtask->name,
+                    'duration' => $formattedDuration,
                 ];
             });
+
+
+        // statistics
+        $taskCounts = SubTask::select(
+            DB::raw('COUNT(*) as total_task_count'),
+            DB::raw('SUM(status = 1) as in_progress_task_count'),
+            DB::raw('SUM(status = 3) as completed_task_count')
+        )
+            ->where('user_id', Auth::user()->id)
+            ->first();
+
+        // Result array
+        $statisticsResult = [
+            'total_task_count' => $taskCounts->total_task_count,
+            'in_progress_task_count' => $taskCounts->in_progress_task_count,
+            'completed_task_count' => $taskCounts->completed_task_count,
+        ];
+        // statistics
         // Employee Section
 
-        if ($role == '3') {
-            return view('dashboard.index_PM', compact('products', 'result')); //Mangers
+
+
+
+        // TL Section
+        // Attendance
+        $authUserTeamId = Auth::user()->team_id;
+        $currentTime = Carbon::now();
+        $cutoffTime = Carbon::createFromTime(13, 30); // 1:30 PM cutoff
+        $today = Carbon::today(); // Current date without time
+
+
+        $totalStrength = User::where('team_id', $authUserTeamId)->count();
+
+        // 2. Get absent employees' details from EmployeeLeave
+        $absentEmployees = EmployeeLeave::with('user:id,name') // Load user details
+            ->whereDate('created_at', $today)
+            ->where(function ($query) use ($currentTime, $cutoffTime) {
+                $query->where('day_type', 1) // Full-day leave
+                    ->orWhere(function ($subQuery) use ($currentTime, $cutoffTime) {
+                        $subQuery->where('day_type', 2)
+                            ->where('half_type', 1)
+                            ->whereRaw('? < ?', [$currentTime, $cutoffTime]);
+                    });
+            })
+            ->whereHas('user', function ($query) use ($authUserTeamId) {
+                $query->where('team_id', $authUserTeamId);
+            })
+            ->get()
+            ->map(function ($leave) {
+                return [
+                    'employee_id' => $leave->user->id,
+                    'employee_name' => $leave->user->name,
+                    'status' => 'Absent',
+                ];
+            });
+
+
+        $absentEmployeeIds = $absentEmployees->pluck('employee_id')->toArray();
+
+        // 3. Get present employees' details by excluding absent ones
+        $presentEmployees = User::where('team_id', $authUserTeamId)
+            ->whereNotIn('id', $absentEmployeeIds)
+            ->get(['id', 'name'])
+            ->map(function ($user) {
+                return [
+                    'employee_id' => $user->id,
+                    'employee_name' => $user->name,
+                    'status' => 'Present',
+                ];
+            });
+
+
+        $attendanceList = $absentEmployees->isEmpty() ? $presentEmployees : $absentEmployees->merge($presentEmployees)
+            ->map(function ($employee) {
+                $nameParts = explode(' ', $employee['employee_name']);
+
+                // Generate initials based on the number of name parts
+                if (count($nameParts) > 1) {
+                    // For multiple parts, take the first letter of each
+                    $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
+                } else {
+                    // For single-part names, take the first two letters
+                    $initials = strtoupper(substr($nameParts[0], 0, 2));
+                }
+
+                return [
+                    'employee_id' => $employee['employee_id'],
+                    'employee_name' => $employee['employee_name'],
+                    'initials' => $initials, // Add initials
+                    'status' => $employee['status'],
+                ];
+            });
+
+
+        $totalAbsentEmployees = $absentEmployees->count();
+        $totalPresentEmployees = $presentEmployees->count();
+        $presentPercentage = $totalStrength ? round(($totalPresentEmployees / $totalStrength) * 100, 2) : 0;
+        $absentPercentage = $totalStrength ? round(($totalAbsentEmployees / $totalStrength) * 100, 2) : 0;
+
+
+        $resultss = [
+            'total_strength' => $totalStrength,
+            'total_present_employees' => $totalPresentEmployees,
+            'total_absent_employees' => $totalAbsentEmployees,
+            'present_percentage' => $presentPercentage,
+            'absent_percentage' => $absentPercentage,
+            'attendance_list' => $attendanceList,
+        ];
+
+        // Attendance
+
+        // project Section
+        $products = SubTask::with(['project','user'])->where('team_id',$authUserTeamId)->get();
+        // project Section
+        // TL Section
+
+        if ($role == '1') {
+            return view('dashboard.index_PM', compact('products', 'result')); //Managers
         } elseif ($role == '2') {
-            return view('dashboard.index_TL'); //Team Lead
+            return view('dashboard.index_TL', compact('resultss')); //Team Lead
 
         } else {
-            return view('dashboard.index_EM', compact('subTasks','dailyBreakdown')); // Employees
+            return view('dashboard.index_EM', compact('subTasks', 'dailyBreakdown', 'statisticsResult')); // Employees
 
         }
     }
     public function viewProducts(Request $request, $id)
     {
         // Fetch products and teams
-        $projects = Project::all(); // Use all() to get all projects
+        $projects = Project::all();
         $teams = Team::all();
         $rating = round(SubTask::where('product_id', $id)->avg('rating'));      // Use all() to get all teams
 
@@ -237,9 +351,9 @@ class DashboardController extends Controller
         $subTasks = $query->get()->map(function ($subTask) {
             return [
                 'id' => $subTask->id,
-                'date' => optional($subTask->created_at)->format('d-m-Y'), // Date formatted
+                'date' => optional($subTask->created_at)->format('d-m-Y'),
                 'employee_name' => optional($subTask->user)->name,
-                'team_name' => optional($subTask->team)->name, // Assuming team relation is defined
+                'team_name' => optional($subTask->team)->name,
                 'project_name' => optional($subTask->project)->name,
                 'name' => $subTask->name,
                 'status' => ($subTask->status == 0) ? 'In Progress' : 'Completed',
@@ -280,11 +394,11 @@ class DashboardController extends Controller
             $totalUserCount = $allUsersInTeam->count();
 
             return [
-                'team_id' => $teamId,                  // Include the team_id
-                'team_name' => $teamName,              // Include the team name
-                'users' => $userDetails,               // Users assigned to the product
-                'user_count' => $userCount,            // Count of users in this team for the product
-                'total_user_count' => $totalUserCount, // Total users in the team (regardless of product)
+                'team_id' => $teamId,
+                'team_name' => $teamName,
+                'users' => $userDetails,
+                'user_count' => $userCount,
+                'total_user_count' => $totalUserCount,
             ];
         });
 
@@ -293,6 +407,133 @@ class DashboardController extends Controller
         $html = view('pm.utlization_section', compact('groupedTeams'))->render();
 
         return response()->json($html);
+    }
+    public function fetchEmployeeTaskData(Request $request)
+    {
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
+
+        // Get task counts grouped by week within the current month
+        $weekTaskCounts = SubTask::select(
+            DB::raw('WEEK(created_at, 3) - WEEK(DATE_SUB(created_at, INTERVAL DAYOFMONTH(created_at)-1 DAY), 3) + 1 as week_of_month'),
+            DB::raw('COUNT(*) as total_task_count'),
+            DB::raw('SUM(status = 1) as in_progress_task_count'),
+            DB::raw('SUM(status = 3) as completed_task_count')
+        )
+            ->where('user_id', Auth::user()->id)
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->groupBy('week_of_month')
+            ->orderBy('week_of_month')
+            ->get()
+            ->mapWithKeys(function ($task) {
+                return [
+                    'week_' . $task->week_of_month => [
+                        'total_task_count' => $task->total_task_count,
+                        'in_progress_task_count' => $task->in_progress_task_count,
+                        'completed_task_count' => $task->completed_task_count,
+                    ]
+                ];
+            });
+
+        // Output the result
+        dd($weekTaskCounts);
+
+        // return response()->json($statisticsResult);
+    }
+    public function fetchEmployeeListData(Request $request)
+    {
+
+        $employeeName = $request->input('name'); // Retrieve the name input
+        $authUserTeamId = Auth::user()->team_id;
+        $currentTime = Carbon::now();
+        $cutoffTime = Carbon::createFromTime(13, 30); // 1:30 PM cutoff
+        $today = Carbon::today(); // Current date without time
+
+        // Absent employees based on EmployeeLeave entries
+        $absentEmployees = EmployeeLeave::with('user:id,name')
+            ->whereDate('created_at', $today)
+            ->where(function ($query) use ($currentTime, $cutoffTime) {
+                $query->where('day_type', 1) // Full day leave
+                    ->orWhere(function ($subQuery) use ($currentTime, $cutoffTime) {
+                        $subQuery->where('day_type', 2)
+                            ->where('half_type', 1)
+                            ->whereRaw('? < ?', [$currentTime, $cutoffTime]);
+                    });
+            })
+            ->whereHas('user', function ($query) use ($authUserTeamId, $employeeName) {
+                $query->where('team_id', $authUserTeamId);
+
+                // Apply name filter if provided
+                if (!empty($employeeName)) {
+                    $query->where('name', 'LIKE', "%{$employeeName}%");
+                }
+            })
+            ->get()
+            ->map(function ($leave) {
+                return [
+                    'employee_id' => $leave->user->id,
+                    'employee_name' => $leave->user->name,
+                    'status' => 'Absent',
+                ];
+            });
+
+        // Absent employee IDs for exclusion in present employees list
+        $absentEmployeeIds = $absentEmployees->pluck('employee_id')->toArray();
+
+        // Present employees based on team and name filter, excluding absent IDs
+        $presentEmployees = User::where('team_id', $authUserTeamId)
+            ->whereNotIn('id', $absentEmployeeIds)
+            ->when($employeeName, function ($query) use ($employeeName) {
+                return $query->where('name', 'LIKE', "%{$employeeName}%");
+            })
+            ->get(['id', 'name'])
+            ->map(function ($user) {
+                return [
+                    'employee_id' => $user->id,
+                    'employee_name' => $user->name,
+                    'status' => 'Present',
+                ];
+            });
+
+        // Combine present and absent lists
+        $attendanceList = $absentEmployees->isEmpty() ? $presentEmployees : $absentEmployees->merge($presentEmployees)
+            ->map(function ($employee) {
+                return [
+                    'employee_id' => $employee['employee_id'],
+                    'employee_name' => $employee['employee_name'],
+                    'status' => $employee['status'],
+                ];
+            });
+
+        $attendanceList = $attendanceList->map(function ($list) {
+            $nameParts = explode(' ', $list['employee_name']);
+
+            // Generate initials
+            $initials = '';
+            if (count($nameParts) > 1) {
+                // For multiple parts, take the first letter of each
+                $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
+            } else {
+                // For single-part names, take the first two letters
+                $initials = strtoupper(substr($nameParts[0], 0, 2));
+            }
+
+            $list['initials'] = $initials;
+            return $list;
+        });
+
+        $resultss = [
+            'attendance_list' => $attendanceList,
+        ];
+
+        // Debugging output
+        // dd($resultss);
+        // Render the HTML view with attendance data
+        $html = view('em.attendance_section', compact('resultss'))->render();
+
+        // Return as JSON response
+        return response()->json($html);
+
     }
 
 
