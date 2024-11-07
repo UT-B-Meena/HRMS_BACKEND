@@ -246,24 +246,28 @@ class DashboardController extends Controller
 
         $attendanceList = $absentEmployees->isEmpty() ? $presentEmployees : $absentEmployees->merge($presentEmployees)
             ->map(function ($employee) {
-                $nameParts = explode(' ', $employee['employee_name']);
-
-                // Generate initials based on the number of name parts
-                if (count($nameParts) > 1) {
-                    // For multiple parts, take the first letter of each
-                    $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
-                } else {
-                    // For single-part names, take the first two letters
-                    $initials = strtoupper(substr($nameParts[0], 0, 2));
-                }
-
                 return [
                     'employee_id' => $employee['employee_id'],
                     'employee_name' => $employee['employee_name'],
-                    'initials' => $initials, // Add initials
                     'status' => $employee['status'],
                 ];
             });
+        $attendanceList = $attendanceList->map(function ($list) {
+            $nameParts = explode(' ', $list['employee_name']);
+
+            // Generate initials
+            $initials = '';
+            if (count($nameParts) > 1) {
+                // For multiple parts, take the first letter of each
+                $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
+            } else {
+                // For single-part names, take the first two letters
+                $initials = strtoupper(substr($nameParts[0], 0, 2));
+            }
+
+            $list['initials'] = $initials;
+            return $list;
+        });
 
 
         $totalAbsentEmployees = $absentEmployees->count();
@@ -284,14 +288,44 @@ class DashboardController extends Controller
         // Attendance
 
         // project Section
-        $products = SubTask::with(['project','user'])->where('team_id',$authUserTeamId)->get();
+        $projects = SubTask::with(['product', 'user'])
+            ->where('team_id', $authUserTeamId)
+            ->get()
+            ->groupBy('product.id') // Group by product ID
+            ->map(function ($subtasks, $productId) {
+                // Extract the product name and ID (assuming all subtasks have the same product name and ID)
+                $productName = $subtasks->first()->product->name;
+                $productId = $subtasks->first()->product->id;
+
+                // Count unique users working on this product
+                $numberOfPeople = $subtasks->pluck('user.id')->unique()->count();
+
+                // Calculate total subtasks and completed subtasks
+                $totalSubtasks = $subtasks->count();
+                $completedSubtasks = $subtasks->where('status', 3)->count();
+
+                // Calculate completion rate as the percentage of completed subtasks
+                $completionRate = $totalSubtasks > 0 ? ($completedSubtasks / $totalSubtasks) * 100 : 0;
+
+                return [
+                    'product_name' => $productName,
+                    'product_id' => $productId,
+                    'number_of_people' => $numberOfPeople,
+                    'completion_rate' => round($completionRate),
+                ];
+            })
+            ->values();
+
+        $project_Section = [
+            'projects' => $projects,
+        ];
         // project Section
         // TL Section
 
-        if ($role == '1') {
+        if ($role == '3') {
             return view('dashboard.index_PM', compact('products', 'result')); //Managers
-        } elseif ($role == '2') {
-            return view('dashboard.index_TL', compact('resultss')); //Team Lead
+        } elseif ($role == '1') {
+            return view('dashboard.index_TL', compact('resultss', 'project_Section', 'products')); //Team Lead
 
         } else {
             return view('dashboard.index_EM', compact('subTasks', 'dailyBreakdown', 'statisticsResult')); // Employees
@@ -303,9 +337,34 @@ class DashboardController extends Controller
         // Fetch products and teams
         $projects = Project::all();
         $teams = Team::all();
-        $rating = round(SubTask::where('product_id', $id)->avg('rating'));      // Use all() to get all teams
+        $completedSubtasks = SubTask::where('product_id', $id)
+            ->where('status', 3) // Only consider completed tasks
+            ->whereNotNull('rating') // Ensure rating exists
+            ->count(); // Count completed subtasks with a rating
+
+        $totalSubtasks = SubTask::where('product_id', $id)->count(); // Total subtasks for the product
+
+        // Calculate the completion rate
+        $rating = $totalSubtasks > 0 ? ($completedSubtasks / $totalSubtasks) * 100 : 0;      // Use all() to get all teams
 
         return view('dashboard.product_PM', compact('projects', 'teams', 'id', 'rating'));
+    }
+    public function viewtlProducts(Request $request, $id)
+    {
+        // Fetch products and teams
+        $projects = Project::all();
+        $teams = Team::all();
+        $completedSubtasks = SubTask::where('product_id', $id)
+            ->where('status', 3) // Only consider completed tasks
+            ->whereNotNull('rating') // Ensure rating exists
+            ->count(); // Count completed subtasks with a rating
+
+        $totalSubtasks = SubTask::where('product_id', $id)->count(); // Total subtasks for the product
+
+        // Calculate the completion rate
+        $rating = round($totalSubtasks > 0 ? ($completedSubtasks / $totalSubtasks) * 100 : 0);      // Use all() to get all teams
+
+        return view('dashboard.product_TL', compact('projects', 'teams', 'id', 'rating'));
     }
     public function viewProduct(Request $request, $id)
     {
@@ -333,7 +392,7 @@ class DashboardController extends Controller
         if ($searchValue) {
             $query->where(function ($query) use ($searchValue) {
                 $query->where('name', 'like', "%$searchValue%")
-                    ->orWhereHas('employee', function ($q) use ($searchValue) {
+                    ->orWhereHas('user', function ($q) use ($searchValue) {
                         $q->where('name', 'like', "%$searchValue%");
                     })
                     ->orWhereHas('product', function ($q) use ($searchValue) {
@@ -535,7 +594,132 @@ class DashboardController extends Controller
         return response()->json($html);
 
     }
+    public function viewtlProduct(Request $request, $id)
+    {
+        $project_id = $request->input('project_id');
+        $team_id = Auth::user()->team_id;
+        $date = $request->input('date');
+        $searchValue = $request->input('search.value', '');
 
+        // Eloquent query with relationships
+        $query = SubTask::with(['user', 'product', 'project'])
+            ->where('product_id', $id);
+
+        // Apply filters
+        if ($project_id) {
+            $query->where('project_id', $project_id);
+        }
+        if ($team_id) {
+            $query->where('team_id', $team_id);
+        }
+        if ($date) {
+            $query->whereDate('created_at', $date);
+        }
+
+        // Define status mapping for search terms
+        $statusMap = [
+            'Pending' => 0,
+            'in progress' => 1,
+            'pending for approval' => 2,
+            'completed' => 3
+        ];
+
+        // Apply search filter
+        if ($searchValue) {
+            $query->where(function ($query) use ($searchValue, $statusMap) {
+                $query->where('name', 'like', "%$searchValue%")
+                    ->orWhereHas('user', function ($q) use ($searchValue) {
+                        $q->where('name', 'like', "%$searchValue%");
+                    })
+                    ->orWhereHas('product', function ($q) use ($searchValue) {
+                        $q->where('name', 'like', "%$searchValue%");
+                    })
+                    ->orWhereHas('project', function ($q) use ($searchValue) {
+                        $q->where('name', 'like', "%$searchValue%");
+                    })
+                    ->orWhere(DB::raw("DATE_FORMAT(created_at, '%d-%m-%Y')"), 'like', "%$searchValue%");
+
+                // Search for status by mapping the string to the corresponding numeric value
+                foreach ($statusMap as $statusText => $statusValue) {
+                    if (stripos($searchValue, $statusText) !== false) {
+                        $query->orWhere('status', $statusValue);
+                    }
+                }
+            });
+        }
+
+        // Get the results
+        $subTasks = $query->get()->map(function ($subTask) {
+            // Status Mapping
+            $statusMap = [
+                0 => 'Pending',
+                1 => 'In Progress',
+                2 => 'Pending For Approval',
+                3 => 'Completed',
+            ];
+
+            return [
+                'id' => $subTask->id,
+                'date' => optional($subTask->created_at)->format('d-m-Y'),
+                'employee_name' => optional($subTask->user)->name,
+                'project_name' => optional($subTask->project)->name,
+                'name' => $subTask->name,
+                'status' => $statusMap[$subTask->status] ?? 'Unknown', // Default to 'Unknown' if status is not valid
+            ];
+        });
+
+        return DataTables::of($subTasks)->make(true);
+    }
+
+    public function fetchTlProductData(Request $request)
+    {
+        $authUserTeamId = Auth::user()->team_id;
+        $productIds = $request->input('productIds'); // Expecting an array of product IDs
+
+        // Validate that productIds is an array and not empty
+        if (empty($productIds) || !is_array($productIds)) {
+            return response()->json(['error' => 'No products selected'], 400);
+        }
+
+        // Fetch the relevant projects based on selected product IDs
+        $projects = SubTask::with(['product', 'user'])
+            ->where('team_id', $authUserTeamId)
+            ->whereIn('product_id', $productIds) // Filter by selected product IDs
+            ->get()
+            ->groupBy('product.id') // Group by product ID
+            ->map(function ($subtasks, $productId) {
+                // Extract the product name and ID (assuming all subtasks have the same product name and ID)
+                $productName = $subtasks->first()->product->name;
+                $productId = $subtasks->first()->product->id;
+
+                // Count unique users working on this product
+                $numberOfPeople = $subtasks->pluck('user.id')->unique()->count();
+
+                // Calculate total subtasks and completed subtasks
+                $totalSubtasks = $subtasks->count();
+                $completedSubtasks = $subtasks->where('status', 3)->count();
+
+                // Calculate completion rate as the percentage of completed subtasks
+                $completionRate = $totalSubtasks > 0 ? ($completedSubtasks / $totalSubtasks) * 100 : 0;
+
+                return [
+                    'product_name' => $productName,
+                    'product_id' => $productId,
+                    'number_of_people' => $numberOfPeople,
+                    'completion_rate' => round($completionRate),
+                ];
+            })
+            ->values();
+
+        $project_Section = [
+            'projects' => $projects,
+        ];
+
+        // Render the view with the data and return the HTML response
+        $html = view('tl.product_section', compact('project_Section'))->render();
+
+        return response()->json($html);
+    }
 
 
 }

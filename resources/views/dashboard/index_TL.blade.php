@@ -36,7 +36,8 @@
         }
 
         .streangth_section,
-        .attendance_search, .name_section {
+        .attendance_search,
+        .name_section {
             display: flex;
             justify-content: space-between;
         }
@@ -89,7 +90,8 @@
                                                 <span>SW-{{ $team['employee_id'] }}</span>
                                             </div>
                                         </div>
-                                        <div class="status"style="color: {{ $team['status'] == 'Absent' ? 'red' : 'green' }}">
+                                        <div
+                                            class="status"style="color: {{ $team['status'] == 'Absent' ? 'red' : 'green' }}">
                                             {{ $team['status'] }}</div>
                                     </div>
                                 @endforeach
@@ -99,23 +101,43 @@
                     </div>
                     <div class="product" id="card_list">
                         <div class="header">
-                            <p>Total No: Products <span>{{ $products->count() }}</span></p>
+                            <p>Product Status</p>
+
+                            <p>
+                            <div class="team_name" data-toggle="collapse" data-target="#collapseExample3" role="button"
+                                aria-expanded="false" aria-controls="collapseExample3">
+                                Product List..
+                            </div>
+                            </p>
+                            <div class="collapse" id="collapseExample3">
+                                <div class="card card-body">
+                                    <div id="product_check"> <!-- Container for checkboxes -->
+                                        @foreach ($products as $product)
+                                            <label for="product_{{ $product->id }}">
+                                                <input type="checkbox" name="product_list[]"
+                                                    id="product_{{ $product->id }}" value="{{ $product->id }}">
+                                                {{ $product->name }}
+                                            </label><br>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="body">
-                            @foreach ($products as $product)
-                                <div class="product_section">
-                                    <p>Product name:{{ $product->name }}</p>
-                                    <p>Peoples:</p>
+                        <div class="product_body">
+                            @foreach ($project_Section['projects'] as $project)
+                                <div class="project_section">
+                                    <p>Product name:{{ $project['product_name'] }}</p>
+                                    <p>Peoples:{{ $project['number_of_people'] }}</p>
                                     <p>Project Completion
-                                        Rate:{{ round(\App\Models\SubTask::where('product_id', $product->id)->avg('rating')) }}%
+                                        Rate:{{ $project['completion_rate'] }}%
                                     </p>
-                                    <a href="{{ route('pm.product', ['id' => $product->id]) }}"
+                                    <a href="{{ route('tl.product', ['id' => $project['product_id']]) }}"
                                         class="btn btn-primary">View Details</a>
                                 </div>
                             @endforeach
                         </div>
                     </div>
-                  
+
 
                 </div>
             </div>
@@ -146,6 +168,32 @@
                     console.error("Error fetching data:", error);
                 }
             });
+        });
+        $('#product_check').on('change', function() {
+            // Get the array of selected product IDs
+            var productIds = $("input[name='product_list[]']:checked").map(function() {
+                return $(this).val();
+            }).get();
+
+            // Check if any products are selected
+            if (productIds.length > 0) {
+                $.ajax({
+                    url: '/tlproductdata',
+                    type: 'GET',
+                    data: {
+                        productIds: productIds // Pass the array of selected product IDs
+                    },
+                    success: function(response) {
+                        $('.product_body').empty().append(
+                        response); // Update the content in the product_body container
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error fetching data:", error);
+                    }
+                });
+            } else {
+                console.log("No products selected");
+            }
         });
     });
 </script>
