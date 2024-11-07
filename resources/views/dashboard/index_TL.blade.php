@@ -1,130 +1,151 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="en">
 
-@section('content')
-<style>
-    .circle-initial {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: #007bff;
-        color: white;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-weight: bold;
-        margin-right: 10px;
-    }
-</style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
-<div class="container">
-    <h2>Dashboard</h2>
+    <style>
+        .cardbody {
+            display: flex;
+            gap: 39px;
+        }
 
-    <div class="row">
-        <!-- First Card (Placeholder) -->
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    First Card
-                </div>
-                <div class="card-body">
-                    <p>This is a placeholder for the first card content.</p>
-                </div>
-            </div>
-        </div>
+        div#card_list {
+            width: 50%;
+        }
 
-        <!-- Second Card (Placeholder) -->
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    Second Card
-                </div>
-                <div class="card-body">
-                    <p>This is a placeholder for the second card content.</p>
-                </div>
-            </div>
-        </div>
+        .utilization .header {
+            display: flex;
+            justify-content: space-between;
+        }
 
-        <!-- Third Card: Team Rating -->
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    Team Rating
+        .team_name {
+            border: 1px solid black;
+            padding: 4px;
+            border-radius: 5px;
+        }
+
+        .employee_section {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .streangth_section,
+        .attendance_search, .name_section {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .no-records {
+            text-align: center;
+            margin-top: 12px;
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="main">
+            <div class="main_section">
+                <div class="user-info">
+                    <p><strong>User ID:</strong> {{ Auth::user()->employee_id }}</p>
+                    <p><strong>Name:</strong> {{ Auth::user()->name }}</p> <!-- Assuming you have a name field -->
                 </div>
-                {{-- <div class="card-body">
-                    @if($employees && count($employees) > 0)
-                        <ul class="list-group">
-                            @foreach($employees as $employee)
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span>{{ strtoupper(substr($employee->name, 0, 1)) }}. {{ $employee->name }}</span>
-                                    <div>
-                                        <span class="stars">
-                                            @for($i = 1; $i <= 10; $i++)
-                                                <i class="fa{{ $i <= $employee->rating ? 's' : 'r' }} fa-star"></i>
-                                            @endfor
-                                        </span>
+
+                <form action="{{ route('logout') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">Logout</button>
+                </form>
+
+                <div class="cardbody mt-4">
+                    <div class="attendance" id="card_list">
+                        <div class="header">
+                            <div class="attendance_search">
+                                <p>Team Attendance</p>
+                                <input type="search" name="employee" id="employee_search" placeholder="Search..">
+                            </div>
+                            <div>
+                                <p>Total :{{ $resultss['total_strength'] }}</p>
+                                <p>Present :{{ $resultss['total_present_employees'] }}</p>
+                                <p>Absent :{{ $resultss['total_absent_employees'] }}</p>
+                            </div>
+                        </div>
+                        <div class="attendance_body">
+                            @if ($resultss['attendance_list']->isEmpty())
+                                <div class="no-records">No records found</div>
+                            @else
+                                @foreach ($resultss['attendance_list'] as $team)
+                                    <div class="employee_section">
+                                        <div class="name_section">
+                                            <p>{{ $team['initials'] }}</p>
+                                            <div class="ml-4">
+                                                <span>{{ $team['employee_name'] }}</span>
+                                                <span>SW-{{ $team['employee_id'] }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="status"style="color: {{ $team['status'] == 'Absent' ? 'red' : 'green' }}">
+                                            {{ $team['status'] }}</div>
                                     </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @else
-                        <p>No employees available for rating.</p>
-                    @endif
-                </div> --}}
+                                @endforeach
+                            @endif
 
-                <div class="card-body">
-                    <ul class="list-group">
-
-
-                        @foreach($monthlyRating as $rating)
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div class="d-flex flex-column">
-                                    <span class="circle-initial">
-                                        @php
-                                            $nameParts = explode(' ',$rating->user->name);
-                                            $initials = '';
-                                            foreach ($nameParts as $part) {
-                                                if (!empty($part)) {
-                                                    $initials .= strtoupper($part[0]);
-                                                }
-                                            }
-                                        @endphp
-                                        {{ $initials }} <!-- Display the initials -->
-                                    </span>
-                                    <span><strong>{{ $rating->user->name }}</strong></span>
-                                    <span class="stars">
-                                        @php
-                                            $roundedRating = round($rating->rating);
-                                            $fullStars = floor($roundedRating );
-                                            $halfStar = ($roundedRating  == 1) ? 1 : 0;
-                                        @endphp
-
-                                        @foreach(range(1, 10) as $i) <!-- Loop through 10 stars -->
-                                            @if($i <= $fullStars)
-                                                <i class="fa fa-star" style="color: gold;"></i> <!-- Full star -->
-                                            @elseif($i == $fullStars + 1 && $halfStar)
-                                                <i class="fa fa-star-half-alt" style="color: gold;"></i> <!-- Half star -->
-                                            @else
-                                                <i class="fa fa-star" style="color: lightgray;"></i> <!-- Empty star -->
-                                            @endif
-                                        @endforeach
-                                    </span>
+                        </div>
+                    </div>
+                    <div class="product" id="card_list">
+                        <div class="header">
+                            <p>Total No: Products <span>{{ $products->count() }}</span></p>
+                        </div>
+                        <div class="body">
+                            @foreach ($products as $product)
+                                <div class="product_section">
+                                    <p>Product name:{{ $product->name }}</p>
+                                    <p>Peoples:</p>
+                                    <p>Project Completion
+                                        Rate:{{ round(\App\Models\SubTask::where('product_id', $product->id)->avg('rating')) }}%
+                                    </p>
+                                    <a href="{{ route('pm.product', ['id' => $product->id]) }}"
+                                        class="btn btn-primary">View Details</a>
                                 </div>
-                                <span class="ml-auto">{{ $rating->rating }} / 10</span>
-                            </li>
-                        @endforeach
-                    </ul>
+                            @endforeach
+                        </div>
+                    </div>
+                  
+
                 </div>
-
-
-
-
-
             </div>
         </div>
     </div>
-</div>
-@endsection
+</body>
 
-@section('scripts')
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-@endsection
+</html>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script> <!-- Bootstrap JS -->
+
+<script>
+    $(document).ready(function() {
+        $('#employee_search').on('input', function() {
+            var name = $(this).val();
+
+
+            $.ajax({
+                url: '/employeeAttendancelist',
+                type: 'GET',
+                data: {
+                    name: name
+                },
+                success: function(response) {
+                    $('.attendance_body').empty().append(response);
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error fetching data:", error);
+                }
+            });
+        });
+    });
+</script>
