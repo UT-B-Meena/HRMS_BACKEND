@@ -20,43 +20,19 @@ class RatingController extends Controller
         if ($request->ajax()) {
             $teamId = $request->teamId;
     
-            $currentMonth = Carbon::now()->month;
-            $currentYear = Carbon::now()->year;
-            $query = SubTask::with(['user:id,employee_id,name', 'team:id,name'])
-                ->selectRaw('user_id, team_id, 
-                             AVG(CASE WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN rating END) AS avg_monthly_rating, 
-                             AVG(rating) AS avg_total_rating', [$currentMonth, $currentYear])
-                ->groupBy('user_id', 'team_id');
-    
-    
+            $currentmonth = now()->format('Y-m'); 
+            $rating= Rating::with(['user.team'])->where('month',$currentmonth);
             if ($teamId !== "all") {
-                $query->where('team_id', $teamId);
+                $rating->whereHas('user', function($query) use ($teamId) {
+                    $query->where('team_id', $teamId);
+                });
             }
-    
-            $subTasks = $query->get();
-
-            $data = $subTasks->map(function ($subTask) use ($currentMonth, $currentYear) {
-                // Check if there is a rating for the current month in the rating table for this user
-                $userRating = Rating::where('user_id', $subTask->user_id)
-                                    ->whereMonth('created_at', $currentMonth)
-                                    ->whereYear('created_at', $currentYear)
-                                    ->first();
-                $monthlyRate= round($userRating ? $userRating->rating : $subTask->avg_monthly_rating,0);
-                $editButton = '<button class="btn btn-sm btn-primary edit-btn"  data-emp-name="' .$subTask->user->name . '" data-month-rate="' . $monthlyRate . '" data-user-id="' . $subTask->user_id . '">Edit</button>';
-
-                return [
-                    'name' => $subTask->user->name,
-                    'employee_id' => $subTask->user->employee_id,
-                    'user_id' => $subTask->user->id,
-                    'team' => $subTask->team->name,
-                    'avg_monthly_rating' => $monthlyRate,
-                    'avg_total_rating' => round($subTask->avg_total_rating,0),
-                    'action' => $editButton,
-                ];
-            });
-    
-            return DataTables::of($data)
+            $ratingData = $rating->get();
+            return DataTables::of($ratingData)
             ->addIndexColumn() 
+            ->addColumn('action', function ($row) {
+                return '<button class="btn btn-sm btn-primary edit-btn"  data-emp-name="' .$row->user->name . '" data-month-rate="' . $row->rating . '" data-user-id="' . $row->user_id . '">Edit</button>';
+            })
             ->rawColumns(['action']) 
             ->make(true);
         }
@@ -83,14 +59,18 @@ class RatingController extends Controller
             'user_id' => 'exists:users,id', // Ensure each ID exists in the users table
             'ratingValue' => 'required|integer|max:10',
         ]);
-        $currentmonth = now()->format('yy-m'); 
-
+        $currentmonth = now()->format('Y-m'); 
+        $averageRating = Rating::where('user_id', $request->user_id)->whereNot('month',$currentmonth)->sum('rating');
+        $avgcount = Rating::where('user_id', $request->user_id)->count();
+        $avg=$averageRating + $request->ratingValue;
+        $averages= round($avg/ $avgcount,0);
         $rating = Rating::firstOrNew([
             'user_id' => $request->user_id,
             'month'=>$currentmonth
         ]);
-        $rating->month=$currentmonth ;
+        $rating->month=$currentmonth;
         $rating->rating=$request->ratingValue;
+        $rating->average=$averages;
         $rating->updated_by=$authuser;
         $rating->save();
         return response()->json(['success' => "rating updtaed successfully"]);

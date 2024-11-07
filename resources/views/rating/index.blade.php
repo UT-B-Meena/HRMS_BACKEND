@@ -108,11 +108,11 @@
             },
             columns: [
                 { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
-                { data: 'employee_id', name: 'employee_id' },
-                { data: 'name', name: 'name' },
-                { data: 'team', name: 'team' },
-                { data: 'avg_total_rating', name: 'avg_total_rating' },
-                { data: 'avg_monthly_rating', name: 'avg_monthly_rating' },
+                { data: 'user.employee_id', name: 'user.employee_id' },
+                { data: 'user.name', name: 'user.name' },
+                { data: 'user.team.name', name: 'user.team.name' },
+                { data: 'average', name: 'average' },
+                { data: 'rating', name: 'rating' },
                 { data: 'action', name: 'action', orderable: false, searchable: false },
             ]   
         });
