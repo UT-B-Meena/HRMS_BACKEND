@@ -34,7 +34,12 @@ class SubTaskController extends Controller
             'user:id,name',
             'createdBy:id,name',
             'updatedBy:id,name'
-        ])->get();
+        ])
+
+            ->when(Auth::user()->role_id == 3, function ($query) {
+                $query->where('team_id', Auth::user()->team_id);
+            })
+            ->get();
 
         $groupedSubtasks = [
             'To-Do' => $subtasks->filter(fn($subtask) => $subtask->status == 0 && $subtask->reopen_status == 0),
@@ -43,15 +48,61 @@ class SubTaskController extends Controller
             'Reopen' => $subtasks->filter(fn($subtask) => $subtask->reopen_status == 1 && $subtask->reopen_status != 0)
         ];
 
-        if($role == '1' || $role == '2'|| $role == '3'){
+        if ($role == '1' || $role == '2' || $role == '3') {
             return view('subtasks.subtask', compact('products', 'teams', 'owners', 'groupedSubtasks'));
-            }else if($role == '4'){
-                return view('subtasks.employee_subtask', compact('groupedSubtasks'));
-            }
-
+        } else if ($role == '4') {
+            return view('subtasks.employee_subtask', compact('groupedSubtasks'));
+        }
     }
 
+    function getSubtaskFilter(Request $request){
 
+        $team_id = $request->input('team_id');
+        $priority = $request->input('priority');
+        $search_value = $request->input('search_value');
+
+        $subtasks = SubTask::with([
+            'product:id,name',
+            'project:id,name',
+            'task:id,name',
+            'team:id,name',
+            'assigned_user:id,name',
+            'user:id,name',
+            'createdBy:id,name',
+            'updatedBy:id,name'
+        ])
+
+            ->when(Auth::user()->role_id == 3, function ($query) {
+                $query->where('team_id', Auth::user()->team_id);
+            })
+            ->when($team_id, function ($query) use ($team_id) {
+                $query->where('team_id', $team_id);
+            })
+            ->when($priority, function ($query) use ($priority) {
+                $query->where('priority', $priority);
+            })
+            ->when($search_value, function ($query) use ($search_value) {
+                $query->where(function ($q) use ($search_value) {
+                    $q->whereHas('product', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                      ->orWhereHas('project', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                      ->orWhereHas('task', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                      ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                      ->orWhereHas('assigned_user', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                      ->orWhere('name', 'like', "%$search_value%");
+                });
+            })
+            ->get();
+
+        $groupedSubtasks = [
+            'To-Do' => $subtasks->filter(fn($subtask) => $subtask->status == 0 && $subtask->reopen_status == 0),
+            'On-Going Task' => $subtasks->filter(fn($subtask) => $subtask->status == 1 && $subtask->reopen_status == 0),
+            'Closed' => $subtasks->filter(fn($subtask) => $subtask->status == 3 && $subtask->reopen_status == 0),
+            'Reopen' => $subtasks->filter(fn($subtask) => $subtask->reopen_status == 1 && $subtask->reopen_status != 0)
+        ];
+
+        $html = view('subtasks.subtask_section', compact('groupedSubtasks'))->render();
+        return response()->json($html);
+    }
     public function create(Request $request)
     {
         $projectId = $request->input('project_id');
@@ -144,9 +195,6 @@ class SubTaskController extends Controller
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, $id)
     {
 

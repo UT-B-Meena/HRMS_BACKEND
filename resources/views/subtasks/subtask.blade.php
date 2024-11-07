@@ -9,16 +9,63 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <title>SubTask</title>
+    <style>
+        .extended_hours_div {
+            border: 1px solid red;
+        }
+    </style>
 </head>
 
 <body>
     <div class="container">
         <h2>Sub Task</h2>
         <br>
+        <div class="user-info">
+            <p><strong>User ID:</strong> {{ Auth::user()->employee_id }}</p>
+            <p><strong>Name:</strong> {{ Auth::user()->name }}</p> <!-- Assuming you have a name field -->
+        </div>
 
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#SubtaskModal">
-            Add Subtask
-        </button>
+        <form action="{{ route('logout') }}" method="POST">
+            @csrf
+            <button type="submit" class="btn btn-danger">Logout</button>
+        </form>
+
+        <div class="row mt-1">
+            <div class="col-lg-7">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#SubtaskModal">
+                    Add Subtask
+                </button>
+            </div>
+            <div class="col-lg-5">
+                <div class="row">
+                    <div class="col-lg-3">
+                        <button class="btn btn-danger d-none" id="clear_btn" onclick="clearFilter()">Clear</button>
+                    </div>
+                    <div class="col-lg-3">
+                        <select class="form-control" name="search_team_id" id="search_team_id"
+                            onchange = "subTaskFilter()">
+                            <option value="">All Team</option>
+                            @foreach ($teams as $team)
+                                <option value="{{ $team->id }}">{{ $team->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-3">
+                        <select class="form-control" name="search_priority" id="search_priority"
+                            onchange="subTaskFilter()">
+                            <option value="">Priority</option>
+                            <option value="low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3">
+                        <input class="form-control" type="text" id="search_value" placeholder="search..." oninput="subTaskFilter()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         <div class="modal" id="SubtaskModal">
             <div class="modal-dialog">
@@ -82,7 +129,8 @@
                                 </div>
                                 <div class="col-lg-6">
                                     <label>owner</label>
-                                    <select class="form-control" name="assigned_user_id" id="assigned_user_id" readonly>
+                                    <select class="form-control" name="assigned_user_id" id="assigned_user_id"
+                                        readonly>
                                         <option value="">select owner</option>
                                         @foreach ($owners as $owner)
                                             <option value="{{ $owner->id }}">{{ $owner->name }}</option>
@@ -127,15 +175,13 @@
                                 </div>
                                 <div class="col-lg-12">
                                     <br>
-                                    <center><input class="btn btn-info add_data" type="button" value="add"
+                                    <center><input class="btn btn-info add_data" type="button" value="Add"
                                             id="submit">
                                     </center>
                                 </div>
                             </div>
                         </form>
                     </div>
-
-
                 </div>
             </div>
         </div>
@@ -159,15 +205,21 @@
         @endif
 
 
-        <div class="row">
+        <div class="row mt-2" id="subtask_div">
             @foreach ($groupedSubtasks as $key => $subtasks)
-                <div class="col-lg-3">
-                    <h4>{{ $key }} {{ count($subtasks) }}</h4>
-                    <div class="pending_div p-4" style="border:1px solid black">
+                <div class="col-lg-3  ">
+                    <h4 class="p-4">{{ $key }} <span
+                            class="badge bg-primary">{{ count($subtasks) }}</span></h4>
+                    <div class="pending_div ">
                         @foreach ($subtasks as $subtask)
-                            <div> {{ $subtask->product->name }}<br>
+                            <div class="p-1 card m-1 @if ($subtask->extended_status == 1 && $subtask->status == 1) extended_hours_div @endif">
+                                {{ $subtask->product->name }}<br>
                                 Project: {{ $subtask->project->name }}<br>
-                                Assinee: {{ $subtask->user->name }}@if ($key == 'To-Do')
+                                Assinee: {{ $subtask->user->name }}
+                                @if ($subtask->extended_status == 1 && $subtask->status == 1)
+                                    <span class="text-danger">Time Extended </span>
+                                @endif
+                                @if ($subtask->status == 0)
                                     <br>
                                     Task: <br>
                                     Sub Task: {{ $subtask->name }}<br>
@@ -177,14 +229,15 @@
                                     Priority:{{ $subtask->priority }}
                                 @endif
                                 <br>
-                                @if (($subtask->status == 0 || $subtask->status == 1) && $subtask->reopen_status == 0)
-                                    <button onclick="showSubTask({{ $subtask->id }},{{ $subtask->status }})"
-                                        class="btn editSubTask"><i class="fa fa-edit"></i></button>
-                                @endif
-                                @if ($key == 'To-Do')
-                                    <button onclick="deleteSubTask({{ $subtask->id }})" class="btn "><i
-                                            class="fa fa-trash"></i></button>
-                                @endif
+                                @if (Auth::user()->role_id == 2 && $subtask->reopen_status == 0)
+                                    @if ($subtask->status == 0 || $subtask->status == 1)
+                                        <button onclick="showSubTask({{ $subtask->id }}, {{ $subtask->status }})"
+                                            class="btn editSubTask"><i class="fa fa-edit"></i></button>
+                                        @endif @if ($subtask->status == 0)
+                                            <button onclick="deleteSubTask({{ $subtask->id }})" class="btn"> <i
+                                                    class="fa fa-trash"></i> </button>
+                                        @endif
+                                    @endif
                             </div>
                         @endforeach
                     </div>
@@ -198,6 +251,43 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
     <script>
+        function clearFilter(){
+            $("#search_team_id, #search_priority, #search_value").val('');
+
+            $("#clear_btn").addClass('d-none');
+            subTaskFilter();
+        }
+
+        function subTaskFilter() {
+
+            var team_id = $("#search_team_id").val();
+            var priority = $("#search_priority").val();
+            var search_value = $("#search_value").val();
+
+            if(team_id || priority || search_value){
+                $("#clear_btn").removeClass('d-none');
+            }else{
+                $("#clear_btn").addClass('d-none');
+            }
+
+            $.ajax({
+                url: '{{ route('getSubtaskFilter') }}',
+                type: 'GET',
+                data: {
+                    team_id: team_id,
+                    priority: priority,
+                    search_value: search_value
+                },
+                success: function(response) {
+                    $('#subtask_div').empty().append(response);
+                },
+
+                error: function(xhr, status, error) {
+                    console.error("Error fetching data:", error);
+                }
+            });
+        }
+
         $("#submit").click(function() {
             $(".text-danger").text('');
             var formData = {
@@ -219,6 +309,7 @@
             var url = ($(this).val() === 'Add') ? '{{ route('subtask.store') }}' :
                 '{{ route('subtask.update', '') }}' + '/' + id;
             var method = ($(this).val() === 'Add') ? 'POST' : 'PUT';
+            console.log(method + $(this).val());
 
             $.ajax({
                 url: url,
@@ -237,7 +328,6 @@
                             $('#error-' + field).text(errors[field][0]);
                         }
 
-                        alert('Validation errors:\n' + errorMessage);
                     } else {
                         alert('Error loading task. Please try again.');
                     }
@@ -324,7 +414,7 @@
 
                 success: function(response) {
                     alert(response.message);
-                    window.location.href='';
+                    window.location.href = '';
                 },
                 error: function(xhr) {
                     alert('Please try again.');

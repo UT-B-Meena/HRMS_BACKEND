@@ -21,18 +21,32 @@ class TaskController extends Controller
         return view('tasks.task', compact('products'));
     }
 
-    public function getTasksData()
+    public function getTasksData(Request $request)
     {
 
-        $tasks = Task::with(['product:id,name', 'project:id,name', 'createdBy:id,name', 'updatedBy:id,name'])->get();
+        $taskSearch = $request->input('task_search');
+
+        $tasks = Task::with(['product:id,name', 'project:id,name', 'createdBy:id,name', 'updatedBy:id,name'])
+            ->when($taskSearch, function ($query, $taskSearch) {
+                $query->where(function ($q) use ($taskSearch) {
+                    $q->whereHas('product', function ($q) use ($taskSearch) {
+                        $q->where('name', 'like', '%' . $taskSearch . '%');
+                    })
+                        ->orWhereHas('project', function ($q) use ($taskSearch) {
+                            $q->where('name', 'like', '%' . $taskSearch . '%');
+                        })
+                        ->orWhere('name', 'like', '%' . $taskSearch . '%');
+                });
+            })
+            ->get();
 
         return DataTables::of($tasks)
             ->addIndexColumn()
             ->addColumn('product', fn($task) => $task->product->name ?? '')
             ->addColumn('project', fn($task) => $task->project->name ?? '')
             ->addColumn('action', function ($task) {
-                return '<button onclick="showTask(' . $task->id . ')" class="btn btn-primary">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteTask(' . $task->id . ')">Delete</button>';
+                return '<button onclick="showTask(' . $task->id . ')" class="btn text-warning"><i class="fa fa-edit"></i></button>
+                    <button class="btn text-danger" onclick="deleteTask(' . $task->id . ')"><i class="fa fa-trash"></i></button>';
             })
             ->rawColumns(['action'])
             ->make(true);
@@ -49,7 +63,6 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
-
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'product_id' => 'required',
@@ -62,7 +75,7 @@ class TaskController extends Controller
 
         $exists = Task::where(['project_id' => $validatedData['project_id'], 'name' => $validatedData['name']])->exists();
 
-        if(!$exists){
+        if (!$exists) {
             $task = Task::create($validatedData);
 
             if ($task) {
@@ -72,11 +85,10 @@ class TaskController extends Controller
                 Session::flash('error', 'Failed to create task. Please try again.');
                 return redirect()->back();
             }
-        }else{
+        } else {
             Session::flash('error', 'Task name already exits.');
-                return redirect()->back();
+            return redirect()->back();
         }
-
     }
 
 
@@ -90,7 +102,6 @@ class TaskController extends Controller
             return response()->json([
                 'task' => $task,
                 'projects' => $projects,
-
                 'status' => 200
             ], 200);
         } else {
@@ -136,22 +147,19 @@ class TaskController extends Controller
         }
     }
 
-
-
     public function destroy(string $id)
     {
         $task = Task::findOrFail($id);
 
         $exists = SubTask::where('task_id', $id)->exists();
-        if(!$exists){
+        if (!$exists) {
             if ($task->delete()) {
                 return response()->json(['status' => 200, 'message' => 'Task deleted successfully.'], 200);
             } else {
                 return response()->json(['status' => 500, 'message' => 'Failed to delete task.'], 500);
             }
-        }else{
+        } else {
             return response()->json(['status' => 302, 'message' => 'Task cannot be deleted because it is associated.'],  302);
         }
-
     }
 }

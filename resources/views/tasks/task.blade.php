@@ -7,17 +7,32 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <title>Document</title>
+    <style>
+        #tasksTable_filter {
+            display: none;
+        }
+    </style>
 </head>
 
 <body>
     <div class="container">
         <h2>Task</h2>
-        <br>
-        <a href="#" class="btn btn-secondary">Add Task</a>
-        <br>
-        <br>
-        <div class="card p-4">
+
+        <div class="user-info">
+            <p><strong>User ID:</strong> {{ Auth::user()->employee_id }}</p>
+            <p><strong>Name:</strong> {{ Auth::user()->name }}</p> <!-- Assuming you have a name field -->
+        </div>
+
+        <form action="{{ route('logout') }}" method="POST">
+            @csrf
+            <button type="submit" class="btn btn-danger">Logout</button>
+        </form>
+
+        <a href="#" class="btn btn-secondary mt-2">Add Task</a>
+
+        <div class="card p-4 mt-2">
             <form id="taskForm" method="post" action="{{ route('task.store') }}" onsubmit="return validateForm()">
                 @csrf
                 <div class="row">
@@ -67,7 +82,7 @@
                 </ul>
             </div>
         @endif
-
+        <input type="text" id="task_search" placeholder="search...">
         <table id="tasksTable" class="table table-bordered">
             <thead>
                 <tr>
@@ -87,21 +102,31 @@
     <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
     <script>
         /* function validateForm() {
-            const nameField = document.getElementById('name').value;
-            const namePattern = /^[A-Za-z\s]+$/;
+                    const nameField = document.getElementById('name').value;
+                    const namePattern = /^[A-Za-z\s]+$/;
 
-            if (!namePattern.test(nameField)) {
-                $("#task_error").text('Invalid task name');
-                return false;
-            }
-            return true;
-        } */
+                    if (!namePattern.test(nameField)) {
+                        $("#task_error").text('Invalid task name');
+                        return false;
+                    }
+                    return true;
+                } */
 
         $(document).ready(function() {
+
+            $('#task_search').on('input', function() {
+                $('#tasksTable').DataTable().ajax.reload();
+            });
+
             $('#tasksTable').DataTable({
                 processing: true,
                 serverSide: true,
-                ajax: '{{ route('tasks.data') }}',
+                ajax: {
+                    url: '{{ route('tasks.data') }}',
+                    data: function(d) {
+                        d.task_search = $('#task_search').val();
+                    }
+                },
                 columns: [{
                         data: 'DT_RowIndex',
                         name: 'DT_RowIndex',
@@ -212,7 +237,8 @@
                             });
                             $('#project_id').prop('disabled', false);
                         } else {
-                            $('#project_id').append('<option value="">No projects found for this product.</option>');
+                            $('#project_id').append(
+                                '<option value="">No projects found for this product.</option>');
                             $('#project_id').prop('disabled', true);
                         }
 
