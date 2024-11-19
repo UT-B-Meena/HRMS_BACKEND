@@ -73,7 +73,7 @@ class RatingController extends Controller
         $rating->average=$averages;
         $rating->updated_by=$authuser;
         $rating->save();
-        return response()->json(['success' => "rating updtaed successfully"]);
+        return response()->json(['success' => "rating updated successfully"]);
 
 
     }
