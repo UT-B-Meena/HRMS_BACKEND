@@ -33,9 +33,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/attendancedata', [DashboardController::class, 'fetchAttendanceData'])->name('attendancedata');
     });
     Route::group(['as' => 'em.'], routes: function() {
-        
         Route::get('/chartemployeetaskData', [DashboardController::class, 'fetchEmployeeTaskData'])->name('chartemployeetaskData');
         Route::get('/employeeAttendancelist', [DashboardController::class, 'fetchEmployeeListData'])->name('employeeAttendancelist');
+        Route::get('/tl_Product/{id}', [DashboardController::class, 'viewtlProject'])->name('tl_Product');
+    });
+    Route::group(['as' => 'tl.'], routes: function() {
+        Route::get('/Products/{id}', [DashboardController::class, 'viewtlProduct'])->name('products');
+        Route::get('/Product/{id}', [DashboardController::class, 'viewtlProducts'])->name('product');
+        Route::get('/tlproductdata', [DashboardController::class, 'fetchTlProductData'])->name('tlproductdata');
     });
     Route::get('/teamRatingCount', [DashboardController::class, 'fetchteamRatingCount'])->name('teamRatingCount');
     Route::get('/resourceAllotmentCount', [DashboardController::class, 'fetchResourceAllotmentCount'])->name('resourceAllotmentCount');
