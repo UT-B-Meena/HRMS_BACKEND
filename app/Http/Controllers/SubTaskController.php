@@ -9,18 +9,26 @@ use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\SubTask;
+use App\Models\SubTaskUserTimeline;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Session;
 use Yajra\DataTables\DataTables;
 
 class SubTaskController extends Controller
 {
+    protected $commonController;
+
+    public function __construct(CommonController $commonController)
+    {
+        $this->commonController = $commonController;
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $role = Auth::user()->role_id;
+        $user = Auth::user();
         $products = Product::select('id', 'name')->get();
         $teams = Team::select('id', 'name')->get();
         $owners = User::select('id', 'name')->whereIn('role_id', [2, 3])->get();
@@ -36,27 +44,33 @@ class SubTaskController extends Controller
             'updatedBy:id,name'
         ])
 
-            ->when(Auth::user()->role_id == 3, function ($query) {
-                $query->where('team_id', Auth::user()->team_id);
+            ->when($user->role_id == 3, function ($query) use ($user) {
+                $query->where('team_id', $user->team_id);
             })
-            ->get();
+            ->when($user->role_id == 4, function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            });
 
-        $groupedSubtasks = [
-            'To-Do' => $subtasks->filter(fn($subtask) => $subtask->status == 0 && $subtask->reopen_status == 0),
-            'On-Going Task' => $subtasks->filter(fn($subtask) => $subtask->status == 1 && $subtask->reopen_status == 0),
-            'Closed' => $subtasks->filter(fn($subtask) => $subtask->status == 3 && $subtask->reopen_status == 0),
-            'Reopen' => $subtasks->filter(fn($subtask) => $subtask->reopen_status == 1 && $subtask->reopen_status != 0)
-        ];
 
-        if ($role == '1' || $role == '2' || $role == '3') {
+
+        if ($user->role_id == '4') {
+            $data = $this->commonController->getSubtasksData($subtasks);
+            return view('subtasks.employee_subtask', $data);
+        } else {
+            $subtasks = $subtasks->get();
+            $groupedSubtasks = [
+                'To-Do' => $subtasks->filter(fn($subtask) => $subtask->status == 0 && $subtask->reopen_status == 0),
+                'On-Going Task' => $subtasks->filter(fn($subtask) => $subtask->status == 1 && $subtask->reopen_status == 0),
+                'Closed' => $subtasks->filter(fn($subtask) => $subtask->status == 3 && $subtask->reopen_status == 0),
+                'Reopen' => $subtasks->filter(fn($subtask) => $subtask->reopen_status == 1 && $subtask->reopen_status != 0)
+            ];
             return view('subtasks.subtask', compact('products', 'teams', 'owners', 'groupedSubtasks'));
-        } else if ($role == '4') {
-            return view('subtasks.employee_subtask', compact('groupedSubtasks'));
         }
     }
 
-    function getSubtaskFilter(Request $request){
-
+    function getSubtaskFilter(Request $request)
+    {
+        $user = Auth::user();
         $team_id = $request->input('team_id');
         $priority = $request->input('priority');
         $search_value = $request->input('search_value');
@@ -84,11 +98,11 @@ class SubTaskController extends Controller
             ->when($search_value, function ($query) use ($search_value) {
                 $query->where(function ($q) use ($search_value) {
                     $q->whereHas('product', fn($q) => $q->where('name', 'like', "%$search_value%"))
-                      ->orWhereHas('project', fn($q) => $q->where('name', 'like', "%$search_value%"))
-                      ->orWhereHas('task', fn($q) => $q->where('name', 'like', "%$search_value%"))
-                      ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%$search_value%"))
-                      ->orWhereHas('assigned_user', fn($q) => $q->where('name', 'like', "%$search_value%"))
-                      ->orWhere('name', 'like', "%$search_value%");
+                        ->orWhereHas('project', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                        ->orWhereHas('task', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                        ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                        ->orWhereHas('assigned_user', fn($q) => $q->where('name', 'like', "%$search_value%"))
+                        ->orWhere('name', 'like', "%$search_value%");
                 });
             })
             ->get();
@@ -138,8 +152,8 @@ class SubTaskController extends Controller
         $validatedData['updated_by'] = Auth::id();
         $validatedData['status'] = 0;
 
-        $hours = str_pad((int)$validatedData['hours'], 2, '0', STR_PAD_LEFT);   // Pad with zero if length is 1
-        $minutes = str_pad((int)$validatedData['minutes'], 2, '0', STR_PAD_LEFT);
+        $hours = str_pad((int) $validatedData['hours'], 2, '0', STR_PAD_LEFT);   // Pad with zero if length is 1
+        $minutes = str_pad((int) $validatedData['minutes'], 2, '0', STR_PAD_LEFT);
 
         $time = "{$hours}:{$minutes}:00";
 
@@ -222,8 +236,8 @@ class SubTaskController extends Controller
 
         $validatedData['updated_by'] = Auth::id();
 
-        $hours = str_pad((int)$validatedData['hours'], 2, '0', STR_PAD_LEFT);
-        $minutes = str_pad((int)$validatedData['minutes'], 2, '0', STR_PAD_LEFT);
+        $hours = str_pad((int) $validatedData['hours'], 2, '0', STR_PAD_LEFT);
+        $minutes = str_pad((int) $validatedData['minutes'], 2, '0', STR_PAD_LEFT);
         $time = "{$hours}:{$minutes}:00";
         $dateTime = \DateTime::createFromFormat('H:i:s', $time);
 
@@ -253,4 +267,6 @@ class SubTaskController extends Controller
             return response()->json(['status' => 500, 'message' => 'Failed to delete sub task.'], 500);
         }
     }
+
+    
 }

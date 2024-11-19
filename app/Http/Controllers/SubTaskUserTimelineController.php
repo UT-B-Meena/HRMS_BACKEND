@@ -4,64 +4,19 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\SubTask;
+use App\Models\SubTaskUserTimeline;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
 
 class SubTaskUserTimelineController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
+    protected $commonController;
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function __construct(CommonController $commonController)
     {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $this->commonController = $commonController;
     }
 
     public function getClosedTasks(Request $request)
@@ -85,7 +40,7 @@ class SubTaskUserTimelineController extends Controller
                             ->orWhereHas('task', function ($q) use ($searchTerm) {
                                 $q->where('name', 'like', "%{$searchTerm}%");
                             })
-                            ->orWhere('name', 'like', "%{$searchTerm}%"); // Search in the subtask name
+                            ->orWhere('name', 'like', "%{$searchTerm}%");
                     });
                 }
 
@@ -116,9 +71,105 @@ class SubTaskUserTimelineController extends Controller
 
             }
         } catch (\Exception $e) {
-            // Log the error message
             \Log::error('Error retrieving closed tasks: ' . $e->getMessage());
             return response()->json(['message' => 'Server Error', 'error' => $e->getMessage()], 500);
         }
     }
+
+    public function updateSubtasks(Request $request)
+    {
+        $user = Auth::user();
+        $subtask_id = $request->subtask_id;
+        $status = $request->status;
+        $active_status = $request->active_status;
+        $last_start_time_uf = $request->last_start_time;
+        $last_start_time = Carbon::parse($last_start_time_uf);
+        $timeline_id = $request->timeline_id;
+        $subtask = SubTask::find($subtask_id);
+        if ($status == 1 && $active_status == 1) {
+            $subtask->status = $status;
+            $subtask->active_status = $active_status;
+            $subtask->save();
+            $Timeline = SubTaskUserTimeline::create([
+                'user_id' => $subtask->user_id,
+                'product_id' => $subtask->product_id,
+                'project_id' => $subtask->project_id,
+                'task_id' => $subtask->task_id,
+                'subtask_id' => $subtask->id,
+                'start_time' => Carbon::now(),
+                'end_time' => null
+            ]);
+
+
+        } else if ($status == 1 && $active_status == 0) {
+            $current_time = Carbon::now();
+            $time_difference = $last_start_time->diffInSeconds($current_time);
+            $new_total_hours_worked = $this->commonController->calculateNewWorkedTime($subtask->total_hours_worked, $time_difference);
+            $subtask->total_hours_worked = $new_total_hours_worked;
+            $subtask->status = $status;
+            $subtask->active_status = $active_status;
+            $subtask->save();
+
+            $subtask_timeline = SubTaskUserTimeline::find($timeline_id);
+            $subtask_timeline->end_time = Carbon::now()->format('Y-m-d H:i:s');
+            $subtask_timeline->save();
+
+
+        } else {
+            $current_time = Carbon::now();
+            $time_difference = $last_start_time->diffInSeconds($current_time);
+            $new_total_hours_worked = $this->commonController->calculateNewWorkedTime($subtask->total_hours_worked, $time_difference);
+            $estimated_hours = $subtask->estimated_hours;
+            $new_total_hours_worked_seconds = $this->commonController->convertToSeconds($new_total_hours_worked);
+            $estimated_hours_seconds = $this->commonController->convertToSeconds($estimated_hours);
+            $subtask->command = $request->comment;
+            $remaining_seconds = $estimated_hours_seconds - $new_total_hours_worked_seconds;
+
+            if ($remaining_seconds < 0) {
+                $extended_seconds = abs($remaining_seconds);
+                $extended_status = 1;
+                $subtask->extended_status = $extended_status;
+
+                $extended_hours = gmdate("H:i:s", $extended_seconds);
+            } else {
+                $extended_hours = "00:00:00";
+            }
+
+            $subtask->total_hours_worked = $new_total_hours_worked;
+            $subtask->extended_hours = $extended_hours;
+            $subtask->status = $status;
+            $subtask->active_status = $active_status;
+            $subtask->reopen_status = 0;
+            $subtask->save();
+
+            $subtask_timeline = SubTaskUserTimeline::find($timeline_id);
+            $subtask_timeline->end_time = Carbon::now()->format('Y-m-d H:i:s');
+            $subtask_timeline->save();
+
+        }
+        
+
+        $subtasks = SubTask::with([
+            'product:id,name',
+            'project:id,name',
+            'task:id,name',
+            'team:id,name',
+            'assigned_user:id,name',
+            'user:id,name',
+            'createdBy:id,name',
+            'updatedBy:id,name'
+        ])->where('user_id', $user->id)->orderBy('updated_at', 'desc');
+
+        $data = $this->commonController->getSubtasksData($subtasks);
+        return response()->json([
+            'html' => view('subtasks.partials.ongoing_section', $data)->render(),
+            'status' => $status,
+            'active_status' => $active_status,
+            'timeline' => $Timeline ?? null,
+        ]);
+
+    }
+
+
+
 }

@@ -9,17 +9,6 @@ if (!function_exists('getErrorMessage')) {
     }
 }
 
-function status($subtask_Id, $status, $activeStatus) {
-    $subtask = SubTask::find($subtask_Id);
-    if ($subtask) {
-        $subtask->status = $status;
-        $subtask->active_status = $activeStatus;
-        $subtask->save();
-        return response()->json(['success' => true, 'message' => 'Task status updated successfully']);
-    }
-    return response()->json(['success' => false, 'message' => 'Task not found']);
-}
-
 
 function timeDifference($estimated, $worked) {
     [$estHours, $estMinutes] = explode(':', $estimated);

@@ -51,5 +51,10 @@ class SubTask extends Model
     {
         return $this->belongsTo(User::class,'assigned_user_id');
     }
+
+    public function userTimeline()
+{
+    return $this->hasOne(SubTaskUserTimeline::class, 'subtask_id')->latest('updated_at');
+}
 }
 

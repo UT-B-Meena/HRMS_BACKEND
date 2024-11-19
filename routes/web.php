@@ -23,7 +23,7 @@ Route::middleware(['web'])->group(function () {
 });
 
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::group(['as' => 'pm.'], routes: function() {
@@ -33,10 +33,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/attendancedata', [DashboardController::class, 'fetchAttendanceData'])->name('attendancedata');
     });
     Route::group(['as' => 'em.'], routes: function() {
-        
         Route::get('/chartemployeetaskData', [DashboardController::class, 'fetchEmployeeTaskData'])->name('chartemployeetaskData');
         Route::get('/employeeAttendancelist', [DashboardController::class, 'fetchEmployeeListData'])->name('employeeAttendancelist');
+        Route::get('/tl_Product/{id}', [DashboardController::class, 'viewtlProject'])->name('tl_Product');
     });
+    Route::group(['as' => 'tl.'], routes: function() {
+        Route::get('/Products/{id}', [DashboardController::class, 'viewtlProduct'])->name('products');
+        Route::get('/Product/{id}', [DashboardController::class, 'viewtlProducts'])->name('product');
+        Route::get('/tlproductdata', [DashboardController::class, 'fetchTlProductData'])->name('tlproductdata');
+    });
+    Route::get('/teamRatingCount', [DashboardController::class, 'fetchteamRatingCount'])->name('teamRatingCount');
+    Route::get('/resourceAllotmentCount', [DashboardController::class, 'fetchResourceAllotmentCount'])->name('resourceAllotmentCount');
 
     Route::resource('products', ProductController::class);
 
@@ -60,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/productivity_IndividualStatus', [ ProductivityController::class, 'IndividualStatus'])->name('productivity.individualStatus');
 
     Route::get('/closed_tasks', [SubTaskUserTimelineController::class, 'getClosedTasks'])->name('tasks.closed');
+    Route::post('/update_tasks', [SubTaskUserTimelineController::class, 'updateSubtasks'])->name('subtasks.update');
 
     Route::get('/change_password', [AuthController::class, 'showChangePasswordForm'])->name('password.change');
     Route::post('/change_password', [AuthController::class, 'changePassword'])->name('password.update');
