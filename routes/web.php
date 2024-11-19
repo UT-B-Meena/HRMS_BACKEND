@@ -23,7 +23,7 @@ Route::middleware(['web'])->group(function () {
 });
 
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::group(['as' => 'pm.'], routes: function() {
@@ -37,6 +37,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/chartemployeetaskData', [DashboardController::class, 'fetchEmployeeTaskData'])->name('chartemployeetaskData');
         Route::get('/employeeAttendancelist', [DashboardController::class, 'fetchEmployeeListData'])->name('employeeAttendancelist');
     });
+    Route::get('/teamRatingCount', [DashboardController::class, 'fetchteamRatingCount'])->name('teamRatingCount');
+    Route::get('/resourceAllotmentCount', [DashboardController::class, 'fetchResourceAllotmentCount'])->name('resourceAllotmentCount');
 
     Route::resource('products', ProductController::class);
 
@@ -60,6 +62,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/productivity_IndividualStatus', [ ProductivityController::class, 'IndividualStatus'])->name('productivity.individualStatus');
 
     Route::get('/closed_tasks', [SubTaskUserTimelineController::class, 'getClosedTasks'])->name('tasks.closed');
+    Route::post('/update_tasks', [SubTaskUserTimelineController::class, 'updateSubtasks'])->name('subtasks.update');
 
     Route::get('/change_password', [AuthController::class, 'showChangePasswordForm'])->name('password.change');
     Route::post('/change_password', [AuthController::class, 'changePassword'])->name('password.update');
