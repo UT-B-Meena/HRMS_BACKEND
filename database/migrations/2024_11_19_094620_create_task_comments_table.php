@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('task_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('comments');
             $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
             $table->softDeletes(); // Adds a deleted_at column for soft deleting
