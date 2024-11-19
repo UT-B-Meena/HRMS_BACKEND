@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\EmployeeLeave;
+use App\Models\Rating;
 use App\Models\SubTaskUserTimeline;
 use Yajra\DataTables\DataTables;
 use DB;
@@ -535,6 +536,68 @@ class DashboardController extends Controller
         return response()->json($html);
 
     }
+
+    public function fetchteamRatingCount(){
+        $teamId=Auth::user()->team_id;
+        $authuserId=Auth::user()->id;
+        $currentmonth = now()->format('Y-m'); 
+        $ratings = Rating::with(['user:id,name'])
+        ->select('rating', 'user_id')
+        ->where('month', $currentmonth)->whereNot('user_id', $authuserId)
+        ->whereHas('user', function($query) use ($teamId) {
+            $query->where('team_id', $teamId);
+        })
+        ->get()
+        ->map(function ($rating) {
+            $nameParts = explode(' ', $rating->user->name);
+            $initials = '';
+
+            if (count($nameParts) > 1) {
+                $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
+            } else {
+                $initials = strtoupper(substr($nameParts[0], 0, 2));
+            }
+            return [
+                'name' => $rating->user->name,
+                'initials' => $initials,
+                'rating' => $rating->rating,
+            ];
+        });
+        return  response()->json($ratings);
+
+    }
+    public function fetchResourceAllotmentCount(){
+
+        $teamId=Auth::user()->team_id;
+        $authuserId=Auth::user()->id;
+        $date=now()->format('Y-m-d');
+        $absentId=EmployeeLeave::with('user')->where('date',$date)->whereHas('user', function($query) use ($teamId) {
+            $query->where('team_id', $teamId);
+        })
+        ->pluck('user_id')
+        ->push($authuserId) // Add the authenticated user ID to the collection
+        ->unique();
+        $totalCount=User::whereNotIn('id',$absentId)->where('team_id',$teamId)->count();
+        $today = Carbon::today();
+        $allottedCount = SubTask::whereIn('status', [0, 1])
+        ->where('team_id', $teamId)
+        ->whereNotIn('user_id',$absentId)
+        ->whereDate('created_at', $today)
+        ->count();
+        $allottedPercentage = $totalCount > 0 
+        ? ($allottedCount / $totalCount) * 100 
+        : 0;
+        $notAlottedPercentage=100-$allottedPercentage;
+        $alottedDatas=[
+        'total'=>$totalCount,
+        'allottedCount'=>$allottedCount,
+        'allotedPercentage'=>round($allottedPercentage,0),
+        'notAllotedPercentage'=>$notAlottedPercentage
+        ];
+        return  response()->json($alottedDatas);
+
+    }
+    
 
 
 
