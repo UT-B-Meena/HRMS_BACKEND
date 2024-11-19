@@ -12,7 +12,7 @@ return new class extends Migration
     public function up()
 {
     Schema::table('ratings', function (Blueprint $table) {
-        $table->decimal('average', 5, 2)->nullable()->after('rating');
+        $table->integer('average', 5)->nullable()->after('rating');
     });
 }
 
