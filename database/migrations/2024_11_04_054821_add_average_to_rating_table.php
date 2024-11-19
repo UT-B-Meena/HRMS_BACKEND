@@ -12,13 +12,13 @@ return new class extends Migration
     public function up()
 {
     Schema::table('ratings', function (Blueprint $table) {
-        $table->integer('average', 5)->nullable()->after('rating');
+        $table->integer('average')->nullable()->after('rating');
     });
 }
 
 public function down()
 {
-    Schema::table('rating', function (Blueprint $table) {
+    Schema::table('ratings', function (Blueprint $table) {
         $table->dropColumn('average');
     });
 }

@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('month', 7); // Format: YYYY-MM
-            $table->integer('rating',5);
+            $table->integer('rating');
             $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });
