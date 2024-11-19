@@ -28,7 +28,7 @@ return new class extends Migration
             $table->time('total_hours_worked')->default('00:00:00');
             $table->integer('rating')->default(0);
             $table->string('command')->nullable();
-            $table->foreignId('assigned_user_id')->nullable()->constrained('users')->onDelete('cascade');;
+            $table->foreignId('assigned_user_id')->nullable()->constrained('users')->onDelete('cascade');
             $table->text('remark')->nullable();
             $table->integer('reopen_status')->default(0)->comment('0 = not reopen, 1 = reopen');
             $table->text(column: 'description')->nullable();
